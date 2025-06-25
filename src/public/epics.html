@@ -82,10 +82,32 @@
     }    .type-task {
       background-color: #fbbc04; /* Yellow */
       color: #333;
-    }
-    .type-bug {
+    }    .type-bug {
       background-color: #dc3545; /* Red */
-    }  </style>
+    }
+    .release-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: normal;
+      background-color: #6c757d;
+      color: white;
+      margin-left: 8px;
+      min-width: 50px;
+      text-align: center;
+    }
+    .release-badge.current-release {
+      background-color: #28a745; /* Green for current release */
+    }
+    .release-badge.other-release {
+      background-color: #17a2b8; /* Blue for other releases */
+    }
+    .release-badge.no-release {
+      background-color: #6c757d; /* Gray for no release */
+      font-style: italic;
+    }
+  </style>
 </head>
 <body>
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -121,8 +143,7 @@
     <h1 class="mb-4">Epic Hierarchy Viewer</h1>
     
     <div class="card mb-4">
-      <div class="card-body">
-        <div class="form-row">  
+      <div class="card-body">        <div class="form-row">  
           <div class="col-md-6">
             <label for="releaseInput">Release:</label>
             <input type="text" id="releaseInput" class="form-control" placeholder="Enter release value" required>
@@ -130,6 +151,16 @@
           <div class="col-md-6">
             <label for="areaPathInput">Area Path:</label>
             <input type="text" id="areaPathInput" class="form-control" placeholder="Enter area path" required>
+          </div>
+        </div>        <div class="form-row mt-3">
+          <div class="col-md-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="includeAllReleases">
+              <label class="form-check-label" for="includeAllReleases" title="When checked, displays work items from all releases including past and future releases. Release badges will show which release each item belongs to.">
+                Show all work items regardless of release assignment
+                <i class="fas fa-info-circle text-muted ml-1" style="font-size: 12px;"></i>
+              </label>
+            </div>
           </div>
         </div>
         <div class="form-row mt-3">
@@ -210,13 +241,33 @@
       };
       return typeMap[workItemType] || workItemType;
     }    
-    
-    function getWorkItemUrl(workItemId) {
+      function getWorkItemUrl(workItemId) {
       if (!config || !config.orgUrl || !config.projectName) {
         console.error('Configuration not loaded or incomplete. Cannot generate work item URL.');
         return '#'; // Return a safe fallback that won't navigate anywhere
       }
       return `${config.orgUrl}/${config.projectName}/_workitems/edit/${workItemId}`;
+    }
+
+    function getCurrentRelease() {
+      return document.getElementById('releaseInput').value.trim();
+    }
+
+    function createReleaseBadge(releaseValue, currentRelease) {
+      const isCurrentRelease = releaseValue === currentRelease;
+      const isNoRelease = !releaseValue || releaseValue === 'No Release';
+      
+      let badgeClass = 'release-badge';
+      if (isNoRelease) {
+        badgeClass += ' no-release';
+      } else if (isCurrentRelease) {
+        badgeClass += ' current-release';
+      } else {
+        badgeClass += ' other-release';
+      }
+      
+      const displayValue = isNoRelease ? 'No Release' : releaseValue;
+      return `<span class="${badgeClass}" title="Release: ${displayValue}">${displayValue}</span>`;
     }
 
     function getProgressBadgeClass(progress) {
@@ -236,8 +287,10 @@
       workItemDiv.dataset.id = workItem.id;
       workItemDiv.dataset.uniqueId = uniqueId;
       workItemDiv.dataset.level = level;
+        const expandIcon = workItem.hasChildren !== false ? '▶' : '•';
       
-      const expandIcon = workItem.hasChildren !== false ? '▶' : '•';
+      // Create release badge if release information is available
+      const releaseBadge = workItem.release ? createReleaseBadge(workItem.release, getCurrentRelease()) : '';
       
       workItemDiv.innerHTML = `
         <div class="work-item-content">
@@ -245,6 +298,7 @@
           <span class="work-item-type clickable-expand ${getWorkItemTypeClass(workItem.workItemType)}">${getWorkItemTypeDisplay(workItem.workItemType)}</span>
           <a href="${getWorkItemUrl(workItem.id)}" target="_blank" class="work-item-id">${workItem.id}</a>
           <span class="work-item-title">${workItem.title}</span>
+          ${releaseBadge}
           <span class="badge ${getProgressBadgeClass(workItem.progress || 0)} progress-badge" title="Progress: ${workItem.progress || 0}%">${workItem.progress || 0}%</span>
         </div>
       `;
@@ -282,9 +336,10 @@
           if (childrenContainer.children.length === 0) {
             childrenContainer.innerHTML = '<div class="loading">Loading children...</div>';
             childrenContainer.style.display = 'block';
-            
-            const releaseParam = currentRelease ? `&release=${encodeURIComponent(currentRelease)}` : '';
-            const response = await fetch(`/api/workitems/${workItemId}/children?dummy=1${releaseParam}`);
+              const releaseParam = currentRelease ? `&release=${encodeURIComponent(currentRelease)}` : '';
+            const includeAllReleases = document.getElementById('includeAllReleases').checked;
+            const includeAllParam = includeAllReleases ? '&includeAllReleases=true' : '';
+            const response = await fetch(`/api/workitems/${workItemId}/children?dummy=1${releaseParam}${includeAllParam}`);
             if (!response.ok) {
               throw new Error('Failed to load children');
             }
@@ -347,20 +402,22 @@
         const container = document.getElementById('epicsContainer');
         
         // Calculate initial progress for each epic using release-aware backend calculation
-        const epicsWithProgress = await Promise.all(epics.map(async (epic) => {
-          try {
+        const epicsWithProgress = await Promise.all(epics.map(async (epic) => {          try {
             const releaseParam = release ? `?release=${encodeURIComponent(release)}` : '';
-            const cacheBuster = `${releaseParam ? '&' : '?'}_cb=${Date.now()}`;
-            const progressResponse = await fetch(`/api/epics/${epic.id}/progress${releaseParam}${cacheBuster}`);
+            const includeAllReleases = document.getElementById('includeAllReleases').checked;
+            const includeAllParam = includeAllReleases ? `${releaseParam ? '&' : '?'}includeAllReleases=true` : '';
+            const cacheBuster = `${releaseParam || includeAllParam ? '&' : '?'}_cb=${Date.now()}`;
+            const progressResponse = await fetch(`/api/epics/${epic.id}/progress${releaseParam}${includeAllParam}${cacheBuster}`);
             
             if (progressResponse.ok) {
               const progressData = await progressResponse.json();
               epic.progress = progressData.epicProgress;
-              epic.hasChildren = progressData.children.length > 0;
-            } else {
+              epic.hasChildren = progressData.children.length > 0;            } else {
               // Fallback to client-side calculation if backend fails
               const releaseParam = release ? `&release=${encodeURIComponent(release)}` : '';
-              const childrenResponse = await fetch(`/api/workitems/${epic.id}/children?dummy=1${releaseParam}`);
+              const includeAllReleases = document.getElementById('includeAllReleases').checked;
+              const includeAllParam = includeAllReleases ? '&includeAllReleases=true' : '';
+              const childrenResponse = await fetch(`/api/workitems/${epic.id}/children?dummy=1${releaseParam}${includeAllParam}`);
               
               if (childrenResponse.ok) {
                 const children = await childrenResponse.json();
@@ -412,12 +469,19 @@
         loadEpics();
       }
     });
-    
-    document.getElementById('areaPathInput').addEventListener('keypress', (e) => {
+      document.getElementById('areaPathInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         loadEpics();
       }
-    });    
+    });
+    
+    // Refresh view when checkbox state changes
+    document.getElementById('includeAllReleases').addEventListener('change', () => {
+      if (currentRelease && currentAreaPath) {
+        loadEpics();
+      }
+    });
+    
     // Auto-focus on release input and load config
     document.addEventListener('DOMContentLoaded', async () => {
       await loadConfig();

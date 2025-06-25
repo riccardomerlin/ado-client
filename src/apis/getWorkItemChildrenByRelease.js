@@ -9,7 +9,7 @@ const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
 const { orgUrl, projectName, apiVersion, releaseFieldName } = config;
 const pat = process.env.ADO_CLIENT_PAT;
 
-export default async function getWorkItemChildrenByRelease(workItemId, releaseValue) {
+export default async function getWorkItemChildrenByRelease(workItemId, releaseValue, includeAllReleases = false) {
   if (!workItemId) {
     throw new Error('Work item ID is required');
   }
@@ -63,7 +63,6 @@ export default async function getWorkItemChildrenByRelease(workItemId, releaseVa
     throw new Error(`Failed to fetch child details: ${childDetailsResponse.status} ${childDetailsResponse.statusText} - ${JSON.stringify(error)}`);
   }
   const childDetailsResult = await childDetailsResponse.json();
-
   // Filter children by release (except for Tasks which don't have Release field) and exclude removed items
   const filteredChildren = childDetailsResult.value.filter(child => {
     const workItemType = child.fields['System.WorkItemType'];
@@ -80,7 +79,12 @@ export default async function getWorkItemChildrenByRelease(workItemId, releaseVa
       return true;
     }
     
-    // For Epics, Features, and PBIs, filter by Release
+    // If includeAllReleases is true, include all non-removed items regardless of release
+    if (includeAllReleases) {
+      return true;
+    }
+    
+    // For Epics, Features, and PBIs, filter by Release when includeAllReleases is false
     return releaseField === releaseValue;
   });
   
@@ -88,6 +92,7 @@ export default async function getWorkItemChildrenByRelease(workItemId, releaseVa
     id: child.id,
     title: child.fields['System.Title'],
     state: child.fields['System.State'],
-    workItemType: child.fields['System.WorkItemType']
+    workItemType: child.fields['System.WorkItemType'],
+    release: child.fields[releaseFieldName] || 'No Release'
   }));
 }

@@ -81,10 +81,11 @@ fastify.get('/api/epics', async (request, reply) => {
 
 fastify.get('/api/epics/:id/progress', async (request, reply) => {
   const { id } = request.params;
-  const { release } = request.query;
+  const { release, includeAllReleases } = request.query;
   
   try {
-    const progressData = await getEpicProgressByRelease(id, release);
+    const includeAll = includeAllReleases === 'true';
+    const progressData = await getEpicProgressByRelease(id, release, includeAll);
     reply.send(progressData);
   } catch (error) {
     reply.status(500).send({ error: error.message });
@@ -93,14 +94,15 @@ fastify.get('/api/epics/:id/progress', async (request, reply) => {
 
 fastify.get('/api/workitems/:id/children', async (request, reply) => {
   const { id } = request.params;
-  const { release } = request.query;
+  const { release, includeAllReleases } = request.query;
   
   try {
     let children;
     
     if (release) {
       // Use release-filtered API when release is provided
-      children = await getWorkItemChildrenByRelease(id, release);
+      const includeAll = includeAllReleases === 'true';
+      children = await getWorkItemChildrenByRelease(id, release, includeAll);
     } else {
       // Fallback to unfiltered API for backward compatibility
       children = await getWorkItemChildren(id);
@@ -109,9 +111,9 @@ fastify.get('/api/workitems/:id/children', async (request, reply) => {
     // Calculate progress for each child
     const childrenWithProgress = await Promise.all(children.map(async (child) => {
       let grandChildren;
-      
-      if (release) {
-        grandChildren = await getWorkItemChildrenByRelease(child.id, release);
+        if (release) {
+        const includeAll = includeAllReleases === 'true';
+        grandChildren = await getWorkItemChildrenByRelease(child.id, release, includeAll);
       } else {
         grandChildren = await getWorkItemChildren(child.id);
       }
@@ -121,9 +123,9 @@ fastify.get('/api/workitems/:id/children', async (request, reply) => {
       if (grandChildren.length > 0) {
         processedGrandChildren = await Promise.all(grandChildren.map(async (grandChild) => {
           let greatGrandChildren;
-          
-          if (release) {
-            greatGrandChildren = await getWorkItemChildrenByRelease(grandChild.id, release);
+            if (release) {
+            const includeAll = includeAllReleases === 'true';
+            greatGrandChildren = await getWorkItemChildrenByRelease(grandChild.id, release, includeAll);
           } else {
             greatGrandChildren = await getWorkItemChildren(grandChild.id);
           }

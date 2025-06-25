@@ -3,7 +3,7 @@ import getWorkItemChildrenByRelease from './getWorkItemChildrenByRelease.js';
 import getWorkItemChildren from './getWorkItemChildren.js';
 import { calculateItemProgress } from '../utils/progressCalculator.js';
 
-export default async function getEpicProgressByRelease(epicId, releaseValue) {
+export default async function getEpicProgressByRelease(epicId, releaseValue, includeAllReleases = false) {
   if (!epicId) {
     throw new Error('Epic ID is required');
   }
@@ -13,7 +13,7 @@ export default async function getEpicProgressByRelease(epicId, releaseValue) {
     
     if (releaseValue) {
       // Use release-filtered API when release is provided
-      children = await getWorkItemChildrenByRelease(epicId, releaseValue);
+      children = await getWorkItemChildrenByRelease(epicId, releaseValue, includeAllReleases);
     } else {
       // Fallback to unfiltered API
       children = await getWorkItemChildren(epicId);
@@ -22,9 +22,8 @@ export default async function getEpicProgressByRelease(epicId, releaseValue) {
     // Calculate progress for each child recursively with release filtering
     const childrenWithProgress = await Promise.all(children.map(async (child) => {
       let grandChildren;
-      
-      if (releaseValue) {
-        grandChildren = await getWorkItemChildrenByRelease(child.id, releaseValue);
+        if (releaseValue) {
+        grandChildren = await getWorkItemChildrenByRelease(child.id, releaseValue, includeAllReleases);
       } else {
         grandChildren = await getWorkItemChildren(child.id);
       }
@@ -34,9 +33,8 @@ export default async function getEpicProgressByRelease(epicId, releaseValue) {
       if (grandChildren.length > 0) {
         processedGrandChildren = await Promise.all(grandChildren.map(async (grandChild) => {
           let greatGrandChildren;
-          
-          if (releaseValue) {
-            greatGrandChildren = await getWorkItemChildrenByRelease(grandChild.id, releaseValue);
+            if (releaseValue) {
+            greatGrandChildren = await getWorkItemChildrenByRelease(grandChild.id, releaseValue, includeAllReleases);
           } else {
             greatGrandChildren = await getWorkItemChildren(grandChild.id);
           }
