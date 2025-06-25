@@ -289,12 +289,10 @@
         const response = await fetch(`/api/epics?release=${encodeURIComponent(release)}&areaPath=${encodeURIComponent(areaPath)}`);
         if (!response.ok) {
           throw new Error('Failed to load epics');
-        }
-
-        const epics = await response.json();
-        showLoading(false);
+        }        const epics = await response.json();
 
         if (epics.length === 0) {
+          showLoading(false);
           document.getElementById('epicsContainer').innerHTML = 
             '<div class="alert alert-info">No epics found for the specified release and area path.</div>';
           return;
@@ -338,6 +336,9 @@
           }
           return epic;
         }));
+
+        // Hide loading spinner only after all progress calculations are complete
+        showLoading(false);
 
         epicsWithProgress.forEach(epic => {
           const epicElement = createWorkItemElement(epic, 0, null);
