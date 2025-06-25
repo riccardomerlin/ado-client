@@ -3,12 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Create Tasks from Templates</title>
+  <title>ADO Client</title>
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-  <div class="container mt-5">
-    <h1 class="mb-4">Create Tasks from Templates</h1>
+<body>  <div class="container mt-5">
+    <h1 class="mb-4">ADO Client</h1>
+    
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Create Tasks from Templates</h5>
+            <p class="card-text">Add predefined task templates to a PBI.</p>
+            <a href="#" class="btn btn-primary" onclick="showTaskCreation()">Create Tasks</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Epic Hierarchy Viewer</h5>
+            <p class="card-text">View epics and their hierarchical work items with progress tracking.</p>
+            <a href="/epics" class="btn btn-primary">View Epics</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="taskCreationSection" style="display: none;">
+      <hr class="my-4">
+      <h2 class="mb-4">Create Tasks from Templates</h2>
     <form id="taskForm" class="needs-validation" novalidate>
       <div class="form-group">
         <label for="pbiId">PBI ID:</label>
@@ -22,10 +46,14 @@
         <div id="templates"></div>
       </div>
       <button type="submit" class="btn btn-primary">Create Tasks</button>
-    </form>
-    <div id="alertContainer" class="mt-3"></div>
+    </form>    <div id="alertContainer" class="mt-3"></div>
+    </div>
   </div>
   <script>
+    function showTaskCreation() {
+      document.getElementById('taskCreationSection').style.display = 'block';
+      document.querySelector('.row').style.display = 'none';
+    }
     async function fetchTemplates() {
       const response = await fetch('/api/templates');
       const templates = await response.json();
