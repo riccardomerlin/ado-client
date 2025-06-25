@@ -10,8 +10,8 @@ const { orgUrl, projectName, teamId, apiVersion } = config;
 const pat = process.env.ADO_CLIENT_PAT;
 
 export default async function createTaskFromTemplate(templateId, parentId) {
-    if (!templateId) {
-        throw new Error('Missing required parameters. Usage: createTaskFromTemplate <templateId> <parentId>');
+    if (!templateId || !parentId) {
+        throw new Error(`Missing required parameters. templateId: ${JSON.stringify(templateId)}, parentId: ${JSON.stringify(parentId)}`);
     }
 
     const templateUrl = `${orgUrl}/${projectName}/${teamId}/_apis/wit/templates/${templateId}?api-version=${apiVersion}`;

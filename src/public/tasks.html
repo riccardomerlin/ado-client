@@ -82,19 +82,21 @@
       } catch (error) {
         showAlert('Failed to load templates: ' + error.message, 'danger');
       }
-    }
-
+    }    
+    
     function displayTemplates() {
       const templatesContainer = document.getElementById('templates');
       templatesContainer.innerHTML = '';
-        if (templates.length === 0) {
+      
+      if (templates.length === 0) {
         templatesContainer.innerHTML = '<p class="text-muted">No templates available.</p>';
         return;
       }
 
-      templates.forEach(template => {
+      templates.forEach(template => {    
         const checkboxDiv = document.createElement('div');
-        checkboxDiv.className = 'form-check';        checkboxDiv.innerHTML = `
+        checkboxDiv.className = 'form-check';
+        checkboxDiv.innerHTML = `
           <input class="form-check-input" type="checkbox" value="${template.id}" id="template${template.id}">
           <label class="form-check-label" for="template${template.id}">
             ${template.name}
@@ -143,7 +145,7 @@
 
       const pbiId = document.getElementById('pbiId').value;
       const selectedTemplates = Array.from(document.querySelectorAll('#templates input[type="checkbox"]:checked'))
-        .map(checkbox => parseInt(checkbox.value));
+        .map(checkbox => checkbox.value);
 
       if (selectedTemplates.length === 0) {
         showAlert('Please select at least one template.', 'warning');
