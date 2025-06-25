@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Epic Hierarchy Viewer</title>
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-  <style>    .work-item {
+  <style>
+    .work-item {
       padding: 8px;
       border: 1px solid #ddd;
       margin: 2px 0;
@@ -30,7 +31,8 @@
     .work-item-id:hover {
       color: #0056b3;
       text-decoration: underline;
-    }    .work-item-title {
+    }
+    .work-item-title {
       margin-left: 10px;
       user-select: text;
       cursor: text;
@@ -42,19 +44,22 @@
     .progress-badge {
       margin-left: auto;
       min-width: 50px;
-    }.work-item-content {
+    }
+    .work-item-content {
       display: flex;
       align-items: center;
     }
     .loading {
       color: #6c757d;
       font-style: italic;
-    }    .expand-icon {
+    }
+    .expand-icon {
       width: 20px;
       text-align: center;
       margin-right: 5px;
       cursor: pointer;
-    }.work-item-type {
+    }
+    .work-item-type {
       display: inline-block;
       padding: 2px 8px;
       border-radius: 12px;
@@ -81,7 +86,8 @@
     }
   </style>
 </head>
-<body>  <div class="container mt-4">
+<body>
+  <div class="container mt-4">
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="/">Home</a></li>
@@ -90,7 +96,8 @@
     </nav>
     
     <h1 class="mb-4">Epic Hierarchy Viewer</h1>
-      <div class="card mb-4">
+    
+    <div class="card mb-4">
       <div class="card-body">
         <div class="form-row">
           <div class="col-md-6">
@@ -120,18 +127,9 @@
     </div>
     
     <div id="epicsContainer"></div>
-  </div>  <script>
-    console.log('🚀 Epic Hierarchy Viewer - Script Loaded!', new Date().toISOString());
-    
-    // Global error handler
-    window.addEventListener('error', function(e) {
-      console.error('🔥 Global JavaScript Error:', e.error);
-    });
-    
-    window.addEventListener('unhandledrejection', function(e) {
-      console.error('🔥 Unhandled Promise Rejection:', e.reason);
-    });
-    
+  </div>
+
+  <script>
     let currentRelease = '';
     let currentAreaPath = '';
 
@@ -159,7 +157,9 @@
         'Task': 'type-task'
       };
       return typeMap[workItemType] || 'type-epic';
-    }    function getWorkItemTypeDisplay(workItemType) {
+    }
+
+    function getWorkItemTypeDisplay(workItemType) {
       const typeMap = {
         'Epic': 'Epic',
         'Feature': 'Feature',
@@ -170,7 +170,6 @@
     }
 
     function getWorkItemUrl(workItemId) {
-      // Using the config values from the server - you may need to adjust the org URL
       return `https://dev.azure.com/kneatorg/git1601/_workitems/edit/${workItemId}`;
     }
 
@@ -178,23 +177,28 @@
       if (progress === 100) return 'badge-success';
       if (progress >= 50) return 'badge-warning';
       return 'badge-danger';
-    }    function createWorkItemElement(workItem, level = 0, parentId = null) {
+    }
+
+    function createWorkItemElement(workItem, level = 0, parentId = null) {
       const div = document.createElement('div');
       div.className = 'work-item-container';
       
-      // Create a unique identifier that includes the parent context
       const uniqueId = parentId ? `${parentId}-${workItem.id}` : `root-${workItem.id}`;
-        const workItemDiv = document.createElement('div');
+      
+      const workItemDiv = document.createElement('div');
       workItemDiv.className = 'work-item';
       workItemDiv.dataset.id = workItem.id;
       workItemDiv.dataset.uniqueId = uniqueId;
       workItemDiv.dataset.level = level;
       
-      const expandIcon = workItem.hasChildren !== false ? '▶' : '•';      workItemDiv.innerHTML = `
+      const expandIcon = workItem.hasChildren !== false ? '▶' : '•';
+      
+      workItemDiv.innerHTML = `
         <div class="work-item-content">
           <span class="expand-icon clickable-expand">${expandIcon}</span>
           <span class="work-item-type clickable-expand ${getWorkItemTypeClass(workItem.workItemType)}">${getWorkItemTypeDisplay(workItem.workItemType)}</span>
-          <a href="${getWorkItemUrl(workItem.id)}" target="_blank" class="work-item-id">${workItem.id}</a>          <span class="work-item-title">${workItem.title}</span>
+          <a href="${getWorkItemUrl(workItem.id)}" target="_blank" class="work-item-id">${workItem.id}</a>
+          <span class="work-item-title">${workItem.title}</span>
           <span class="badge ${getProgressBadgeClass(workItem.progress || 0)} progress-badge" title="Progress: ${workItem.progress || 0}%">${workItem.progress || 0}%</span>
         </div>
       `;
@@ -205,35 +209,34 @@
       childrenContainer.className = 'children';
       childrenContainer.style.display = 'none';
       div.appendChild(childrenContainer);
-        if (workItem.hasChildren !== false) {
-        // Add click event only to the expandable elements
+      
+      if (workItem.hasChildren !== false) {
         const expandableElements = workItemDiv.querySelectorAll('.clickable-expand');
         expandableElements.forEach(element => {
           element.addEventListener('click', (event) => {
-            event.stopPropagation(); // Prevent event bubbling
+            event.stopPropagation();
             toggleWorkItem(uniqueId, workItem.id, level);
           });
         });
       }
       
       return div;
-    }    async function toggleWorkItem(uniqueId, workItemId, level) {
+    }
+
+    async function toggleWorkItem(uniqueId, workItemId, level) {
       const workItemDiv = document.querySelector(`[data-unique-id="${uniqueId}"]`);
       const childrenContainer = workItemDiv.parentElement.querySelector('.children');
       const expandIcon = workItemDiv.querySelector('.expand-icon');
       
       if (childrenContainer.style.display === 'none') {
-        // Expand
         try {
           expandIcon.textContent = '▼';
           workItemDiv.classList.add('expanded');
           
           if (childrenContainer.children.length === 0) {
-            // Load children for the first time
             childrenContainer.innerHTML = '<div class="loading">Loading children...</div>';
             childrenContainer.style.display = 'block';
             
-            // Pass the current release value to filter children
             const releaseParam = currentRelease ? `&release=${encodeURIComponent(currentRelease)}` : '';
             const response = await fetch(`/api/workitems/${workItemId}/children?dummy=1${releaseParam}`);
             if (!response.ok) {
@@ -257,19 +260,15 @@
           childrenContainer.style.display = 'none';
         }
       } else {
-        // Collapse
         expandIcon.textContent = '▶';
         workItemDiv.classList.remove('expanded');
-        childrenContainer.style.display = 'none';      }
+        childrenContainer.style.display = 'none';
+      }
     }
 
     async function loadEpics() {
-      console.log('📊 loadEpics() function called');
-      
       const release = document.getElementById('releaseInput').value.trim();
       const areaPath = document.getElementById('areaPathInput').value.trim();
-      
-      console.log('📊 Form values:', { release, areaPath });
       
       if (!release) {
         showAlert('Please enter a release value', 'warning');
@@ -287,14 +286,12 @@
       document.getElementById('epicsContainer').innerHTML = '';
       
       try {
-        console.log('📊 Fetching epics from API...');
         const response = await fetch(`/api/epics?release=${encodeURIComponent(release)}&areaPath=${encodeURIComponent(areaPath)}`);
         if (!response.ok) {
           throw new Error('Failed to load epics');
         }
 
         const epics = await response.json();
-        console.log('📊 Received epics:', epics.length, 'epics found');
         showLoading(false);
 
         if (epics.length === 0) {
@@ -303,86 +300,29 @@
           return;
         }
 
-        const container = document.getElementById('epicsContainer');        
-        console.log('📊 Starting progress calculation for', epics.length, 'epics');
-          // Calculate initial progress for each epic using release-aware backend calculation
+        const container = document.getElementById('epicsContainer');
+        
+        // Calculate initial progress for each epic using release-aware backend calculation
         const epicsWithProgress = await Promise.all(epics.map(async (epic) => {
-          console.log(`📊 Processing Epic ${epic.id}: ${epic.title}`);
-          
-          // Enhanced debugging for Epic 326694
-          if (epic.id == 326694 || epic.id === '326694') {
-            console.log('🎯 Found Epic 326694! Processing with enhanced debugging...', {
-              epicId: epic.id,
-              epicIdType: typeof epic.id,
-              epicTitle: epic.title,
-              release: release
-            });
-          }
-          
-          try {            const releaseParam = release ? `?release=${encodeURIComponent(release)}` : '';
+          try {
+            const releaseParam = release ? `?release=${encodeURIComponent(release)}` : '';
             const cacheBuster = `${releaseParam ? '&' : '?'}_cb=${Date.now()}`;
-            const progressUrl = `/api/epics/${epic.id}/progress${releaseParam}${cacheBuster}`;
-            
-            // Enhanced debugging for Epic 326694
-            if (epic.id == 326694 || epic.id === '326694') {
-              console.log('🌐 Epic 326694 - Making API call:', {
-                url: progressUrl,
-                epicId: epic.id,
-                release: release
-              });
-            }
-              const progressResponse = await fetch(progressUrl);
-            
-            // Enhanced debugging for Epic 326694
-            if (epic.id == 326694 || epic.id === '326694') {
-              console.log('📡 Epic 326694 - API Response:', {
-                status: progressResponse.status,
-                statusText: progressResponse.statusText,
-                ok: progressResponse.ok,
-                url: progressResponse.url
-              });
-            }
+            const progressResponse = await fetch(`/api/epics/${epic.id}/progress${releaseParam}${cacheBuster}`);
             
             if (progressResponse.ok) {
               const progressData = await progressResponse.json();
               epic.progress = progressData.epicProgress;
-              epic.hasChildren = progressData.children.length > 0;              // Debug logging for specific epic
-              if (epic.id == 326694 || epic.id === '326694') {
-                console.log('🔍 Epic 326694 Debug (NEW BACKEND API):', {
-                  epicTitle: epic.title,
-                  epicState: epic.state,
-                  progressData: progressData,
-                  calculationMethod: progressData.calculationMethod,
-                  childrenCount: progressData.childCount,
-                  totalProgress: progressData.totalProgress,
-                  calculatedProgress: progressData.epicProgress,
-                  releaseValue: progressData.releaseValue,
-                  timestamp: new Date().toISOString(),
-                  note: '✅ Using NEW release-aware backend API - should be 95%'
-                });
-              }            } else {
-              console.error(`❌ Epic ${epic.id} - Failed to get progress from new API:`, progressResponse.status, progressResponse.statusText);
+              epic.hasChildren = progressData.children.length > 0;
+            } else {
               // Fallback to client-side calculation if backend fails
               const releaseParam = release ? `&release=${encodeURIComponent(release)}` : '';
               const childrenResponse = await fetch(`/api/workitems/${epic.id}/children?dummy=1${releaseParam}`);
               
               if (childrenResponse.ok) {
                 const children = await childrenResponse.json();
-                  if (children.length > 0) {
+                if (children.length > 0) {
                   const totalProgress = children.reduce((sum, child) => sum + (child.progress || 0), 0);
                   epic.progress = Math.round(totalProgress / children.length);
-                    if (epic.id == 326694 || epic.id === '326694') {
-                    console.log('🔄 Epic 326694 Debug (FALLBACK CALCULATION):', {
-                      epicTitle: epic.title,
-                      children: children,
-                      childrenCount: children.length,
-                      individualProgresses: children.map(c => c.progress || 0),
-                      totalProgress: totalProgress,
-                      calculatedProgress: epic.progress,
-                      timestamp: new Date().toISOString(),
-                      note: '⚠️ Using FALLBACK calculation - this should not happen'
-                    });
-                  }
                 } else {
                   epic.progress = epic.state === 'Done' ? 100 : 0;
                 }
@@ -391,13 +331,15 @@
                 epic.progress = epic.state === 'Done' ? 100 : 0;
                 epic.hasChildren = true;
               }
-            }          } catch (error) {
-            console.error(`❌ Epic ${epic.id} - Error in progress calculation:`, error);
+            }
+          } catch (error) {
             epic.progress = epic.state === 'Done' ? 100 : 0;
             epic.hasChildren = true;
           }
           return epic;
-        }));epicsWithProgress.forEach(epic => {
+        }));
+
+        epicsWithProgress.forEach(epic => {
           const epicElement = createWorkItemElement(epic, 0, null);
           container.appendChild(epicElement);
         });
@@ -406,11 +348,15 @@
         showLoading(false);
         showAlert('Failed to load epics: ' + error.message, 'danger');
       }
-    }    function refresh() {
+    }
+
+    function refresh() {
       if (currentRelease && currentAreaPath) {
         loadEpics();
       }
-    }    // Event listeners
+    }
+
+    // Event listeners
     document.getElementById('loadEpicsBtn').addEventListener('click', loadEpics);
     document.getElementById('refreshBtn').addEventListener('click', refresh);
     
@@ -424,11 +370,12 @@
       if (e.key === 'Enter') {
         loadEpics();
       }
-    });    // Auto-focus on release input
+    });
+
+    // Auto-focus on release input
     document.getElementById('releaseInput').focus();
-    
-    console.log('✅ Epic Hierarchy Viewer - Script fully loaded and ready!');
   </script>
+
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
