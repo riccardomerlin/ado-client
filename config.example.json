@@ -1,0 +1,7 @@
+{
+  "orgUrl": "https://dev.azure.com/your-organization",
+  "projectName": "your-project-name",
+  "teamId": "your-team-id-guid",
+  "apiVersion": "7.1",
+  "port": 7010
+}

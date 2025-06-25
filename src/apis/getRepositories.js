@@ -15,11 +15,11 @@ async function getRepositories() {
     const headers = {
         'Authorization': `Basic ${Buffer.from(':' + pat).toString('base64')}`,
     };
-
+    
     try {
         const response = await fetch(url, { headers });
         if (!response.ok) {
-            console.log(response);
+            console.error(`HTTP error! status: ${response.status} ${response.statusText}`);
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();

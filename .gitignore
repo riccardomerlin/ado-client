@@ -4,6 +4,9 @@ node_modules/
 # Environment variables
 .env
 
+# Configuration files with sensitive data
+config.json
+
 # Logs
 logs/
 *.log

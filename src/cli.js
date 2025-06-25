@@ -24,13 +24,13 @@ async function runApi(apiName, args) {
     if (!apiPath) {
       console.error(`Unknown API: ${apiName}`);
       process.exit(1);
-    }
-
+    }   
+    
     const { default: apiFunction } = await import(apiPath);
     const result = await apiFunction(...args);
-    console.log('Operation completed successfully:', result);
+    console.log('Operation completed successfully');
   } catch (error) {
-    console.error('Error during operation:', error);
+    console.error('Error during operation:', error.message);
     process.exit(1);
   }
 }

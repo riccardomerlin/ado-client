@@ -44,6 +44,19 @@ fastify.get('/api/templates', async (_, reply) => {
   }
 });
 
+fastify.get('/api/config', async (_, reply) => {
+  try {
+    // Return only the necessary config data for the frontend
+    const clientConfig = {
+      orgUrl: config.orgUrl,
+      projectName: config.projectName
+    };
+    reply.send(clientConfig);
+  } catch (error) {
+    reply.status(500).send({ error: error.message });
+  }
+});
+
 fastify.post('/api/create-tasks', async (request, reply) => {
   const { pbiId, templateIds } = request.body;
   try {

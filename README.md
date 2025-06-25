@@ -27,13 +27,13 @@ generated:
 ADO_CLIENT_PAT=<your_PAT>
 ```
 
-Open up `./config.json` and fill out all the fields:
+Open up `./config.json` and fill out all the fields (you can copy from `config.example.json`):
 
 ```json
 {
-    "orgUrl": "https://<your_organization_ado_url>",
-    "projectName": "<Your_ADO_Project_Name>",
-    "teamId": "<Your_TeamId_From_ADO>",
+    "orgUrl": "https://dev.azure.com/your-organization",
+    "projectName": "your-project-name",
+    "teamId": "your-team-id-guid",
     "apiVersion": "7.1",
     "port": 7010
 }

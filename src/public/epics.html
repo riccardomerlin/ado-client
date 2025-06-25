@@ -122,7 +122,7 @@
     
     <div class="card mb-4">
       <div class="card-body">
-        <div class="form-row">
+        <div class="form-row">  
           <div class="col-md-6">
             <label for="releaseInput">Release:</label>
             <input type="text" id="releaseInput" class="form-control" value="25R3" placeholder="Enter release value" required>
@@ -151,10 +151,24 @@
     
     <div id="epicsContainer"></div>
   </div>
-
   <script>
     let currentRelease = '';
     let currentAreaPath = '';
+    let config = null;    // Load configuration on page load
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          config = await response.json();
+        } else {
+          console.warn('Failed to load config from server');
+          config = null;
+        }
+      } catch (error) {
+        console.error('Error loading config:', error);
+        config = null;
+      }
+    }
 
     function showAlert(message, type) {
       const alertContainer = document.getElementById('alertContainer');
@@ -188,10 +202,14 @@
         'Bug': 'Bug'
       };
       return typeMap[workItemType] || workItemType;
-    }
-
+    }    
+    
     function getWorkItemUrl(workItemId) {
-      return `https://dev.azure.com/kneatorg/git1601/_workitems/edit/${workItemId}`;
+      if (!config || !config.orgUrl || !config.projectName) {
+        console.error('Configuration not loaded or incomplete. Cannot generate work item URL.');
+        return '#'; // Return a safe fallback that won't navigate anywhere
+      }
+      return `${config.orgUrl}/${config.projectName}/_workitems/edit/${workItemId}`;
     }
 
     function getProgressBadgeClass(progress) {
@@ -392,10 +410,12 @@
       if (e.key === 'Enter') {
         loadEpics();
       }
+    });    
+    // Auto-focus on release input and load config
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadConfig();
+      document.getElementById('releaseInput').focus();
     });
-
-    // Auto-focus on release input
-    document.getElementById('releaseInput').focus();
   </script>
 
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
