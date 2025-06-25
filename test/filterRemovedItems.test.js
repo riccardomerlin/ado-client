@@ -5,11 +5,12 @@ describe('Removed Items Filtering', () => {
   test('should verify WIQL query excludes removed epics', () => {
     // This test verifies that the WIQL query structure is correct
     const expectedWiqlPattern = /AND \[System\.State\] <> 'Removed'/;
-    
+ 
     // Mock the actual query construction
-    const releaseValue = '25R3';
-    const areaPath = 'git1601\\25R3 Product Roadmap';
-    const wiql = `SELECT [System.Id], [System.Title], [System.State] FROM WorkItems WHERE [System.WorkItemType] = 'Epic' AND [Kneat.Gx.Release] = '${releaseValue}' AND [System.AreaPath] = '${areaPath}' AND [System.State] <> 'Removed' ORDER BY [System.Title]`;
+    const releaseValue = '10.0.0';
+    const areaPath = 'myproject\\my-area-path';
+    const releaseFieldName = 'Custom.Release.Field';
+    const wiql = `SELECT [System.Id], [System.Title], [System.State] FROM WorkItems WHERE [System.WorkItemType] = 'Epic' AND [${releaseFieldName}] = '${releaseValue}' AND [System.AreaPath] = '${areaPath}' AND [System.State] <> 'Removed' ORDER BY [System.Title]`;
     
     assert.match(wiql, expectedWiqlPattern);
     assert.ok(wiql.includes("AND [System.State] <> 'Removed'"));
@@ -60,16 +61,17 @@ describe('Removed Items Filtering', () => {
     );
     assert.strictEqual(removedItems.length, 0);
   });
-
+  
   test('should handle release filtering with removed items exclusion', () => {
     // Mock children with release filtering and removed state
+    const releaseFieldName = 'Custom.Release.Field'; // Generic field name for testing
     const mockChildren = [
       {
         id: 1,
         fields: {
           'System.WorkItemType': 'Feature',
           'System.State': 'Active',
-          'Kneat.Gx.Release': '25R3'
+          [releaseFieldName]: '25R3'
         }
       },
       {
@@ -77,7 +79,7 @@ describe('Removed Items Filtering', () => {
         fields: {
           'System.WorkItemType': 'Feature',
           'System.State': 'Removed',
-          'Kneat.Gx.Release': '25R3'
+          [releaseFieldName]: '25R3'
         }
       },
       {
@@ -93,17 +95,15 @@ describe('Removed Items Filtering', () => {
         fields: {
           'System.WorkItemType': 'Feature',
           'System.State': 'New',
-          'Kneat.Gx.Release': '25R4' // Different release
+          [releaseFieldName]: '25R4' // Different release
         }
       }
     ];
 
-    const releaseValue = '25R3';
-
-    // Apply the filtering logic from getWorkItemChildrenByRelease
+    const releaseValue = '25R3';    // Apply the filtering logic from getWorkItemChildrenByRelease
     const filteredChildren = mockChildren.filter(child => {
       const workItemType = child.fields['System.WorkItemType'];
-      const releaseField = child.fields['Kneat.Gx.Release'];
+      const releaseField = child.fields[releaseFieldName];
       const state = child.fields['System.State'];
       
       // Exclude removed items
@@ -130,10 +130,9 @@ describe('Removed Items Filtering', () => {
       child.fields['System.State'] === 'Removed'
     );
     assert.strictEqual(removedItems.length, 0);
-    
-    const wrongReleaseItems = filteredChildren.filter(child => {
+      const wrongReleaseItems = filteredChildren.filter(child => {
       const workItemType = child.fields['System.WorkItemType'];
-      const releaseField = child.fields['Kneat.Gx.Release'];
+      const releaseField = child.fields[releaseFieldName];
       return workItemType !== 'Task' && releaseField !== releaseValue;
     });
     assert.strictEqual(wrongReleaseItems.length, 0);

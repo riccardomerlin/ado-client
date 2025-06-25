@@ -6,7 +6,7 @@ import path from 'path';
 const configPath = path.resolve('config.json');
 const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
 
-const { orgUrl, projectName, apiVersion } = config;
+const { orgUrl, projectName, apiVersion, releaseFieldName } = config;
 const pat = process.env.ADO_CLIENT_PAT;
 
 export default async function getEpicsByRelease(releaseValue, areaPath) {
@@ -18,7 +18,7 @@ export default async function getEpicsByRelease(releaseValue, areaPath) {
     throw new Error('AreaPath value is required');
   }
 
-  const wiql = `SELECT [System.Id], [System.Title], [System.State] FROM WorkItems WHERE [System.WorkItemType] = 'Epic' AND [Kneat.Gx.Release] = '${releaseValue}' AND [System.AreaPath] = '${areaPath}' AND [System.State] <> 'Removed' ORDER BY [System.Title]`;
+  const wiql = `SELECT [System.Id], [System.Title], [System.State] FROM WorkItems WHERE [System.WorkItemType] = 'Epic' AND [${releaseFieldName}] = '${releaseValue}' AND [System.AreaPath] = '${areaPath}' AND [System.State] <> 'Removed' ORDER BY [System.Title]`;
   
   const url = `${orgUrl}/${projectName}/_apis/wit/wiql?api-version=${apiVersion}`;
   

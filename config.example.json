@@ -5,5 +5,6 @@
   "apiVersion": "7.1",
   "port": 7010,
   "defaultRelease": "your-default-release",
-  "defaultAreaPath": "your-project\\your-area-path"
+  "defaultAreaPath": "your-project\\your-area-path",
+  "releaseFieldName": "Your.Custom.Release.Field"
 }

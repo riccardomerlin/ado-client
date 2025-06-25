@@ -6,7 +6,7 @@ import path from 'path';
 const configPath = path.resolve('config.json');
 const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
 
-const { orgUrl, projectName, apiVersion } = config;
+const { orgUrl, projectName, apiVersion, releaseFieldName } = config;
 const pat = process.env.ADO_CLIENT_PAT;
 
 export default async function getWorkItemChildrenByRelease(workItemId, releaseValue) {
@@ -63,11 +63,11 @@ export default async function getWorkItemChildrenByRelease(workItemId, releaseVa
     throw new Error(`Failed to fetch child details: ${childDetailsResponse.status} ${childDetailsResponse.statusText} - ${JSON.stringify(error)}`);
   }
   const childDetailsResult = await childDetailsResponse.json();
-  
+
   // Filter children by release (except for Tasks which don't have Release field) and exclude removed items
   const filteredChildren = childDetailsResult.value.filter(child => {
     const workItemType = child.fields['System.WorkItemType'];
-    const releaseField = child.fields['Kneat.Gx.Release'];
+    const releaseField = child.fields[releaseFieldName];
     const state = child.fields['System.State'];
     
     // Exclude removed items
