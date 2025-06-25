@@ -79,10 +79,12 @@
     }
     .type-product-backlog-item {
       background-color: #007acc; /* Blue */
-    }
-    .type-task {
+    }    .type-task {
       background-color: #fbbc04; /* Yellow */
       color: #333;
+    }
+    .type-bug {
+      background-color: #dc3545; /* Red */
     }
   </style>
 </head>
@@ -147,24 +149,22 @@
 
     function showLoading(show) {
       document.getElementById('loadingContainer').style.display = show ? 'block' : 'none';
-    }
-
-    function getWorkItemTypeClass(workItemType) {
+    }    function getWorkItemTypeClass(workItemType) {
       const typeMap = {
         'Epic': 'type-epic',
         'Feature': 'type-feature',
         'Product Backlog Item': 'type-product-backlog-item',
-        'Task': 'type-task'
+        'Task': 'type-task',
+        'Bug': 'type-bug'
       };
       return typeMap[workItemType] || 'type-epic';
-    }
-
-    function getWorkItemTypeDisplay(workItemType) {
+    }    function getWorkItemTypeDisplay(workItemType) {
       const typeMap = {
         'Epic': 'Epic',
         'Feature': 'Feature',
         'Product Backlog Item': 'PBI',
-        'Task': 'Task'
+        'Task': 'Task',
+        'Bug': 'Bug'
       };
       return typeMap[workItemType] || workItemType;
     }
