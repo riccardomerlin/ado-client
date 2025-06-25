@@ -2,124 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ADO Client</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>ADO Client - Dashboard</title>
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 </head>
-<body>  <div class="container mt-5">
-    <h1 class="mb-4">ADO Client</h1>
-    
-    <div class="row">
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Create Tasks from Templates</h5>
-            <p class="card-text">Add predefined task templates to a PBI.</p>
-            <a href="#" class="btn btn-primary" onclick="showTaskCreation()">Create Tasks</a>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Epic Hierarchy Viewer</h5>
-            <p class="card-text">View epics and their hierarchical work items with progress tracking.</p>
-            <a href="/epics" class="btn btn-primary">View Epics</a>
-          </div>
-        </div>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+      <a class="navbar-brand" href="/">ADO Client</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item active">
+            <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/tasks">Tasks</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/epics">Epics</a>
+          </li>
+        </ul>
       </div>
     </div>
+  </nav>
 
-    <div id="taskCreationSection" style="display: none;">
+  <div class="container mt-4">
+    <div class="jumbotron">
+      <h1 class="display-4">Welcome to ADO Client</h1>
+      <p class="lead">A comprehensive tool for managing Azure DevOps work items, tasks, and hierarchies.</p>
       <hr class="my-4">
-      <h2 class="mb-4">Create Tasks from Templates</h2>
-    <form id="taskForm" class="needs-validation" novalidate>
-      <div class="form-group">
-        <label for="pbiId">PBI ID:</label>
-        <input type="number" id="pbiId" name="pbiId" class="form-control w-25" required>
-        <div class="invalid-feedback">
-          Please provide a valid PBI ID.
+      <p>Choose from the available tools below to get started with your Azure DevOps workflow management.</p>
+    </div>
+    
+    <div class="row">
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">
+              <i class="fas fa-tasks mr-2"></i>Task Management
+            </h5>
+            <p class="card-text flex-grow-1">Create and manage tasks from predefined templates. Streamline your development workflow by quickly adding structured task sets to Product Backlog Items.</p>
+            <div class="mt-auto">
+              <a href="/tasks" class="btn btn-primary">Manage Tasks</a>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="form-group">
-        <label for="templates">Select Templates:</label>
-        <div id="templates"></div>
+      
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">
+              <i class="fas fa-sitemap mr-2"></i>Epic Hierarchy Viewer
+            </h5>
+            <p class="card-text flex-grow-1">Visualize and track progress across epic hierarchies. View epics, features, and their child work items with real-time progress calculations and release filtering.</p>
+            <div class="mt-auto">
+              <a href="/epics" class="btn btn-primary">View Epics</a>
+            </div>
+          </div>        </div>
       </div>
-      <button type="submit" class="btn btn-primary">Create Tasks</button>
-    </form>    <div id="alertContainer" class="mt-3"></div>
     </div>
   </div>
   <script>
-    function showTaskCreation() {
-      document.getElementById('taskCreationSection').style.display = 'block';
-      document.querySelector('.row').style.display = 'none';
-    }
-    async function fetchTemplates() {
-      const response = await fetch('/api/templates');
-      const templates = await response.json();
-      const templatesDiv = document.getElementById('templates');
-      templates.forEach(template => {
-        const checkboxDiv = document.createElement('div');
-        checkboxDiv.className = 'form-check';
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.name = 'templateIds';
-        checkbox.value = template.id;
-        checkbox.className = 'form-check-input';
-        const label = document.createElement('label');
-        label.textContent = template.name;
-        label.className = 'form-check-label';
-        checkboxDiv.appendChild(checkbox);
-        checkboxDiv.appendChild(label);
-        templatesDiv.appendChild(checkboxDiv);
-      });
-    }
-
-    document.getElementById('taskForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const form = event.target;
-      if (!form.checkValidity()) {
-        event.stopPropagation();
-        form.classList.add('was-validated');
-        return;
-      }
-      const formData = new FormData(form);
-      const pbiId = formData.get('pbiId');
-      const templateIds = formData.getAll('templateIds');
-      try {
-        const response = await fetch('/api/create-tasks', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ pbiId, templateIds })
-        });
-        const result = await response.json();
-        showAlert('Tasks created successfully!', 'success');
-      } catch (error) {
-        showAlert('Failed to create tasks. Please try again.', 'danger');
-      }
-    });
-
-    function showAlert(message, type) {
-      const alertContainer = document.getElementById('alertContainer');
-      alertContainer.innerHTML = `
-        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-          ${message}
-        </div>
-      `;
-
-      // Remove the alert after 5 seconds
-      setTimeout(() => {
-        const alert = alertContainer.querySelector('.alert');
-        if (alert) {
-          alert.classList.remove('show');
-          setTimeout(() => alertContainer.innerHTML = '', 150);
-        }
-      }, 5000);
-    }
-
-    fetchTemplates();
+    // Simple dashboard - no complex stats loading needed
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>

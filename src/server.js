@@ -27,6 +27,10 @@ fastify.get('/', async (_, reply) => {
   return reply.sendFile('index.html');
 });
 
+fastify.get('/tasks', async (_, reply) => {
+  return reply.sendFile('tasks.html');
+});
+
 fastify.get('/epics', async (_, reply) => {
   return reply.sendFile('epics.html');
 });
