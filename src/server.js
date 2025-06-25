@@ -49,7 +49,9 @@ fastify.get('/api/config', async (_, reply) => {
     // Return only the necessary config data for the frontend
     const clientConfig = {
       orgUrl: config.orgUrl,
-      projectName: config.projectName
+      projectName: config.projectName,
+      defaultRelease: config.defaultRelease,
+      defaultAreaPath: config.defaultAreaPath
     };
     reply.send(clientConfig);
   } catch (error) {

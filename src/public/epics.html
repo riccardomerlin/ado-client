@@ -125,11 +125,11 @@
         <div class="form-row">  
           <div class="col-md-6">
             <label for="releaseInput">Release:</label>
-            <input type="text" id="releaseInput" class="form-control" value="25R3" placeholder="Enter release value" required>
+            <input type="text" id="releaseInput" class="form-control" placeholder="Enter release value" required>
           </div>
           <div class="col-md-6">
             <label for="areaPathInput">Area Path:</label>
-            <input type="text" id="areaPathInput" class="form-control" value="git1601\25R3 Product Roadmap" placeholder="Enter area path" required>
+            <input type="text" id="areaPathInput" class="form-control" placeholder="Enter area path" required>
           </div>
         </div>
         <div class="form-row mt-3">
@@ -160,6 +160,13 @@
         const response = await fetch('/api/config');
         if (response.ok) {
           config = await response.json();
+          // Set default values in the input boxes if they are available in config
+          if (config.defaultRelease) {
+            document.getElementById('releaseInput').value = config.defaultRelease;
+          }
+          if (config.defaultAreaPath) {
+            document.getElementById('areaPathInput').value = config.defaultAreaPath;
+          }
         } else {
           console.warn('Failed to load config from server');
           config = null;
