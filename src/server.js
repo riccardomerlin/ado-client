@@ -116,7 +116,7 @@ fastify.get('/api/workitems/:id/children', async (request, reply) => {
         grandChildren = await getWorkItemChildrenByRelease(child.id, release, includeAll);
       } else {
         grandChildren = await getWorkItemChildren(child.id);
-      }
+      }      
       
       // Recursively calculate progress for grandchildren first
       let processedGrandChildren = [];
@@ -130,14 +130,36 @@ fastify.get('/api/workitems/:id/children', async (request, reply) => {
             greatGrandChildren = await getWorkItemChildren(grandChild.id);
           }
           
-          const grandChildProgress = calculateItemProgress(grandChild, greatGrandChildren);
+          // Recursively calculate progress for great-grandchildren (e.g., tasks under PBIs)
+          let processedGreatGrandChildren = [];
+          if (greatGrandChildren.length > 0) {
+            processedGreatGrandChildren = await Promise.all(greatGrandChildren.map(async (greatGrandChild) => {
+              let greatGreatGrandChildren;
+              if (release) {
+                const includeAll = includeAllReleases === 'true';
+                greatGreatGrandChildren = await getWorkItemChildrenByRelease(greatGrandChild.id, release, includeAll);
+              } else {
+                greatGreatGrandChildren = await getWorkItemChildren(greatGrandChild.id);
+              }
+              
+              const greatGrandChildProgress = calculateItemProgress(greatGrandChild, greatGreatGrandChildren);
+              return {
+                ...greatGrandChild,
+                progress: greatGrandChildProgress,
+                hasChildren: greatGreatGrandChildren.length > 0
+              };
+            }));
+          }
+          
+          const grandChildProgress = calculateItemProgress(grandChild, processedGreatGrandChildren);
+          
           return {
             ...grandChild,
             progress: grandChildProgress,
             hasChildren: greatGrandChildren.length > 0
           };
         }));
-      }
+      }      
       
       const progress = calculateItemProgress(child, processedGrandChildren);
       
