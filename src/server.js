@@ -4,10 +4,8 @@ import { fileURLToPath } from 'url';
 import createTasksFromTemplates from './apis/createTasksFromTemplates.js';
 import getTemplates from './apis/getTemplates.js';
 import getEpicsByRelease from './apis/getEpicsByRelease.js';
-import getWorkItemChildren from './apis/getWorkItemChildren.js';
-import getWorkItemChildrenByRelease from './apis/getWorkItemChildrenByRelease.js';
 import getEpicProgressByRelease from './apis/getEpicProgressByRelease.js';
-import { calculateProgress, calculateItemProgress } from './utils/progressCalculator.js';
+import { getChildrenWithBottomUpProgress } from './utils/hierarchyProgressCalculator.js';
 import { promises as fs } from 'fs';
 
 const configPath = path.resolve('config.json');
@@ -97,78 +95,9 @@ fastify.get('/api/workitems/:id/children', async (request, reply) => {
   const { release, includeAllReleases } = request.query;
   
   try {
-    let children;
-    
-    if (release) {
-      // Use release-filtered API when release is provided
-      const includeAll = includeAllReleases === 'true';
-      children = await getWorkItemChildrenByRelease(id, release, includeAll);
-    } else {
-      // Fallback to unfiltered API for backward compatibility
-      children = await getWorkItemChildren(id);
-    }
-    
-    // Calculate progress for each child
-    const childrenWithProgress = await Promise.all(children.map(async (child) => {
-      let grandChildren;
-        if (release) {
-        const includeAll = includeAllReleases === 'true';
-        grandChildren = await getWorkItemChildrenByRelease(child.id, release, includeAll);
-      } else {
-        grandChildren = await getWorkItemChildren(child.id);
-      }      
-      
-      // Recursively calculate progress for grandchildren first
-      let processedGrandChildren = [];
-      if (grandChildren.length > 0) {
-        processedGrandChildren = await Promise.all(grandChildren.map(async (grandChild) => {
-          let greatGrandChildren;
-            if (release) {
-            const includeAll = includeAllReleases === 'true';
-            greatGrandChildren = await getWorkItemChildrenByRelease(grandChild.id, release, includeAll);
-          } else {
-            greatGrandChildren = await getWorkItemChildren(grandChild.id);
-          }
-          
-          // Recursively calculate progress for great-grandchildren (e.g., tasks under PBIs)
-          let processedGreatGrandChildren = [];
-          if (greatGrandChildren.length > 0) {
-            processedGreatGrandChildren = await Promise.all(greatGrandChildren.map(async (greatGrandChild) => {
-              let greatGreatGrandChildren;
-              if (release) {
-                const includeAll = includeAllReleases === 'true';
-                greatGreatGrandChildren = await getWorkItemChildrenByRelease(greatGrandChild.id, release, includeAll);
-              } else {
-                greatGreatGrandChildren = await getWorkItemChildren(greatGrandChild.id);
-              }
-              
-              const greatGrandChildProgress = calculateItemProgress(greatGrandChild, greatGreatGrandChildren);
-              return {
-                ...greatGrandChild,
-                progress: greatGrandChildProgress,
-                hasChildren: greatGreatGrandChildren.length > 0
-              };
-            }));
-          }
-          
-          const grandChildProgress = calculateItemProgress(grandChild, processedGreatGrandChildren);
-          
-          return {
-            ...grandChild,
-            progress: grandChildProgress,
-            hasChildren: greatGrandChildren.length > 0
-          };
-        }));
-      }      
-      
-      const progress = calculateItemProgress(child, processedGrandChildren);
-      
-      return {
-        ...child,
-        progress,
-        hasChildren: grandChildren.length > 0
-      };
-    }));
+    // Use the new bottom-up approach for accurate progress calculation
+    const includeAll = includeAllReleases === 'true';
+    const childrenWithProgress = await getChildrenWithBottomUpProgress(id, release, includeAll);
     
     reply.send(childrenWithProgress);
   } catch (error) {
