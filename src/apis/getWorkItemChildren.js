@@ -59,11 +59,23 @@ export default async function getWorkItemChildren(workItemId) {
     throw new Error(`Failed to fetch child details: ${childDetailsResponse.status} ${childDetailsResponse.statusText} - ${JSON.stringify(error)}`);
   }
   const childDetailsResult = await childDetailsResponse.json();
-  
-  // Filter out removed items
-  const activeChildren = childDetailsResult.value.filter(child => 
-    child.fields['System.State'] !== 'Removed'
-  );
+    // Filter out removed items and Test Cases
+  const activeChildren = childDetailsResult.value.filter(child => {
+    const state = child.fields['System.State'];
+    const workItemType = child.fields['System.WorkItemType'];
+    
+    // Exclude removed items
+    if (state === 'Removed') {
+      return false;
+    }
+    
+    // Exclude Test Cases
+    if (workItemType === 'Test Case') {
+      return false;
+    }
+    
+    return true;
+  });
   
   return activeChildren.map(child => ({
     id: child.id,

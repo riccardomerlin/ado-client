@@ -62,8 +62,7 @@ export default async function getWorkItemChildrenByRelease(workItemId, releaseVa
     const error = await childDetailsResponse.json();
     throw new Error(`Failed to fetch child details: ${childDetailsResponse.status} ${childDetailsResponse.statusText} - ${JSON.stringify(error)}`);
   }
-  const childDetailsResult = await childDetailsResponse.json();
-  // Filter children by release (except for Tasks which don't have Release field) and exclude removed items
+  const childDetailsResult = await childDetailsResponse.json();  // Filter children by release (except for Tasks which don't have Release field) and exclude removed items and Test Cases
   const filteredChildren = childDetailsResult.value.filter(child => {
     const workItemType = child.fields['System.WorkItemType'];
     const releaseField = child.fields[releaseFieldName];
@@ -71,6 +70,11 @@ export default async function getWorkItemChildrenByRelease(workItemId, releaseVa
     
     // Exclude removed items
     if (state === 'Removed') {
+      return false;
+    }
+    
+    // Exclude Test Cases
+    if (workItemType === 'Test Case') {
       return false;
     }
     
