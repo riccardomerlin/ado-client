@@ -276,6 +276,32 @@
       return 'badge-danger';
     }
 
+    function createProgressSpinner() {
+      return `<span class="badge badge-secondary progress-badge" title="Calculating progress...">
+        <i class="fas fa-spinner fa-spin"></i>
+      </span>`;
+    }
+
+    function updateWorkItemProgress(workItemId, progress, hasChildren) {
+      const workItemDiv = document.querySelector(`[data-id="${workItemId}"]`);
+      if (workItemDiv) {
+        const progressBadge = workItemDiv.querySelector('.progress-badge');
+        if (progressBadge) {
+          progressBadge.className = `badge ${getProgressBadgeClass(progress)} progress-badge`;
+          progressBadge.title = `Progress: ${progress}%`;
+          progressBadge.innerHTML = `${progress}%`;
+        }
+        
+        // Update expand icon if hasChildren info is available
+        if (hasChildren !== undefined && !hasChildren) {
+          const expandIcon = workItemDiv.querySelector('.expand-icon');
+          if (expandIcon) {
+            expandIcon.textContent = '•';
+          }
+        }
+      }
+    }
+
     function createWorkItemElement(workItem, level = 0, parentId = null) {
       const div = document.createElement('div');
       div.className = 'work-item-container';
@@ -287,10 +313,15 @@
       workItemDiv.dataset.id = workItem.id;
       workItemDiv.dataset.uniqueId = uniqueId;
       workItemDiv.dataset.level = level;
-        const expandIcon = workItem.hasChildren !== false ? '▶' : '•';
+      const expandIcon = workItem.hasChildren !== false ? '▶' : '•';
       
       // Create release badge if release information is available
       const releaseBadge = workItem.release ? createReleaseBadge(workItem.release, getCurrentRelease()) : '';
+      
+      // Show spinner for progress if not yet calculated, otherwise show actual progress
+      const progressBadge = workItem.progress !== undefined 
+        ? `<span class="badge ${getProgressBadgeClass(workItem.progress)} progress-badge" title="Progress: ${workItem.progress}%">${workItem.progress}%</span>`
+        : createProgressSpinner();
       
       workItemDiv.innerHTML = `
         <div class="work-item-content">
@@ -299,7 +330,7 @@
           <a href="${getWorkItemUrl(workItem.id)}" target="_blank" class="work-item-id">${workItem.id}</a>
           <span class="work-item-title">${workItem.title}</span>
           ${releaseBadge}
-          <span class="badge ${getProgressBadgeClass(workItem.progress || 0)} progress-badge" title="Progress: ${workItem.progress || 0}%">${workItem.progress || 0}%</span>
+          ${progressBadge}
         </div>
       `;
       
@@ -367,6 +398,46 @@
       }
     }
 
+    async function calculateEpicProgress(epic, release) {
+      try {
+        const releaseParam = release ? `?release=${encodeURIComponent(release)}` : '';
+        const includeAllReleases = document.getElementById('includeAllReleases').checked;
+        const includeAllParam = includeAllReleases ? `${releaseParam ? '&' : '?'}includeAllReleases=true` : '';
+        const cacheBuster = `${releaseParam || includeAllParam ? '&' : '?'}_cb=${Date.now()}`;
+        const progressResponse = await fetch(`/api/epics/${epic.id}/progress${releaseParam}${includeAllParam}${cacheBuster}`);
+        
+        if (progressResponse.ok) {
+          const progressData = await progressResponse.json();
+          updateWorkItemProgress(epic.id, progressData.epicProgress, progressData.children.length > 0);
+        } else {
+          // Fallback to client-side calculation if backend fails
+          const releaseParam = release ? `&release=${encodeURIComponent(release)}` : '';
+          const includeAllReleases = document.getElementById('includeAllReleases').checked;
+          const includeAllParam = includeAllReleases ? '&includeAllReleases=true' : '';
+          const childrenResponse = await fetch(`/api/workitems/${epic.id}/children?dummy=1${releaseParam}${includeAllParam}`);
+          
+          if (childrenResponse.ok) {
+            const children = await childrenResponse.json();
+            if (children.length > 0) {
+              const totalProgress = children.reduce((sum, child) => sum + (child.progress || 0), 0);
+              const calculatedProgress = Math.round(totalProgress / children.length);
+              updateWorkItemProgress(epic.id, calculatedProgress, true);
+            } else {
+              const fallbackProgress = epic.state === 'Done' ? 100 : 0;
+              updateWorkItemProgress(epic.id, fallbackProgress, false);
+            }
+          } else {
+            const fallbackProgress = epic.state === 'Done' ? 100 : 0;
+            updateWorkItemProgress(epic.id, fallbackProgress, true);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to calculate progress for epic ${epic.id}:`, error);
+        const fallbackProgress = epic.state === 'Done' ? 100 : 0;
+        updateWorkItemProgress(epic.id, fallbackProgress, true);
+      }
+    }
+
     async function loadEpics() {
       const release = document.getElementById('releaseInput').value.trim();
       const areaPath = document.getElementById('areaPathInput').value.trim();
@@ -390,7 +461,9 @@
         const response = await fetch(`/api/epics?release=${encodeURIComponent(release)}&areaPath=${encodeURIComponent(areaPath)}`);
         if (!response.ok) {
           throw new Error('Failed to load epics');
-        }        const epics = await response.json();
+        }
+
+        const epics = await response.json();
 
         if (epics.length === 0) {
           showLoading(false);
@@ -401,51 +474,17 @@
 
         const container = document.getElementById('epicsContainer');
         
-        // Calculate initial progress for each epic using release-aware backend calculation
-        const epicsWithProgress = await Promise.all(epics.map(async (epic) => {          try {
-            const releaseParam = release ? `?release=${encodeURIComponent(release)}` : '';
-            const includeAllReleases = document.getElementById('includeAllReleases').checked;
-            const includeAllParam = includeAllReleases ? `${releaseParam ? '&' : '?'}includeAllReleases=true` : '';
-            const cacheBuster = `${releaseParam || includeAllParam ? '&' : '?'}_cb=${Date.now()}`;
-            const progressResponse = await fetch(`/api/epics/${epic.id}/progress${releaseParam}${includeAllParam}${cacheBuster}`);
-            
-            if (progressResponse.ok) {
-              const progressData = await progressResponse.json();
-              epic.progress = progressData.epicProgress;
-              epic.hasChildren = progressData.children.length > 0;            } else {
-              // Fallback to client-side calculation if backend fails
-              const releaseParam = release ? `&release=${encodeURIComponent(release)}` : '';
-              const includeAllReleases = document.getElementById('includeAllReleases').checked;
-              const includeAllParam = includeAllReleases ? '&includeAllReleases=true' : '';
-              const childrenResponse = await fetch(`/api/workitems/${epic.id}/children?dummy=1${releaseParam}${includeAllParam}`);
-              
-              if (childrenResponse.ok) {
-                const children = await childrenResponse.json();
-                if (children.length > 0) {
-                  const totalProgress = children.reduce((sum, child) => sum + (child.progress || 0), 0);
-                  epic.progress = Math.round(totalProgress / children.length);
-                } else {
-                  epic.progress = epic.state === 'Done' ? 100 : 0;
-                }
-                epic.hasChildren = children.length > 0;
-              } else {
-                epic.progress = epic.state === 'Done' ? 100 : 0;
-                epic.hasChildren = true;
-              }
-            }
-          } catch (error) {
-            epic.progress = epic.state === 'Done' ? 100 : 0;
-            epic.hasChildren = true;
-          }
-          return epic;
-        }));
-
-        // Hide loading spinner only after all progress calculations are complete
+        // Load epics immediately without progress calculations
         showLoading(false);
-
-        epicsWithProgress.forEach(epic => {
+        epics.forEach(epic => {
+          // Don't set progress initially - will show spinner
           const epicElement = createWorkItemElement(epic, 0, null);
           container.appendChild(epicElement);
+        });
+
+        // Calculate progress for each epic in the background
+        epics.forEach(epic => {
+          calculateEpicProgress(epic, release);
         });
 
       } catch (error) {
