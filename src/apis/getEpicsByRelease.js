@@ -57,10 +57,19 @@ export default async function getEpicsByRelease(releaseValue, areaPath) {
     const error = await detailsResponse.json();
     throw new Error(`Failed to fetch epic details: ${detailsResponse.status} ${detailsResponse.statusText} - ${JSON.stringify(error)}`);
   }
-
   const detailsResult = await detailsResponse.json();
   
-  return detailsResult.value.map(workItem => ({
+  // Filter out epics that have parents (only show top-level epics)
+  const topLevelEpics = detailsResult.value.filter(workItem => {
+    // Check if this epic has a parent relationship
+    const relations = workItem.relations || [];
+    const hasParent = relations.some(relation => 
+      relation.rel === 'System.LinkTypes.Hierarchy-Reverse' // This indicates a parent relationship
+    );
+    return !hasParent; // Only include epics without parents
+  });
+  
+  return topLevelEpics.map(workItem => ({
     id: workItem.id,
     title: workItem.fields['System.Title'],
     state: workItem.fields['System.State'],
