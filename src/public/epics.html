@@ -102,10 +102,22 @@
     }
     .release-badge.other-release {
       background-color: #17a2b8; /* Blue for other releases */
-    }
-    .release-badge.no-release {
+    }    .release-badge.no-release {
       background-color: #6c757d; /* Gray for no release */
       font-style: italic;
+    }
+    .related-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: normal;
+      background-color: #e1f5fe; /* Light cyan background */
+      color: #006064; /* Dark cyan text */
+      border: 1px solid #b3e5fc; /* Light cyan border */
+      margin-left: 8px;
+      min-width: 50px;
+      text-align: center;
     }
   </style>
 </head>
@@ -255,9 +267,7 @@
 
     function getCurrentRelease() {
       return document.getElementById('releaseInput').value.trim();
-    }
-
-    function createReleaseBadge(releaseValue, currentRelease) {
+    }    function createReleaseBadge(releaseValue, currentRelease) {
       const isCurrentRelease = releaseValue === currentRelease;
       const isNoRelease = !releaseValue || releaseValue === 'No Release';
       
@@ -272,6 +282,13 @@
       
       const displayValue = isNoRelease ? 'No Release' : releaseValue;
       return `<span class="${badgeClass}" title="Release: ${displayValue}">${displayValue}</span>`;
+    }
+
+    function createRelatedBadge(relationshipType) {
+      if (relationshipType === 'related') {
+        return `<span class="related-badge" title="This item is related to the parent (not a direct hierarchy child)">Related</span>`;
+      }
+      return '';
     }
 
     function getProgressBadgeClass(progress) {
@@ -318,9 +335,11 @@
       workItemDiv.dataset.uniqueId = uniqueId;
       workItemDiv.dataset.level = level;
       const expandIcon = workItem.hasChildren !== false ? '▶' : '•';
-      
-      // Create release badge if release information is available
+        // Create release badge if release information is available
       const releaseBadge = workItem.release ? createReleaseBadge(workItem.release, getCurrentRelease()) : '';
+      
+      // Create related badge if this is a Related item
+      const relatedBadge = createRelatedBadge(workItem.relationshipType);
       
       // Show spinner for progress if not yet calculated, otherwise show actual progress
       const progressBadge = workItem.progress !== undefined 
@@ -334,6 +353,7 @@
           <a href="${getWorkItemUrl(workItem.id)}" target="_blank" class="work-item-id">${workItem.id}</a>
           <span class="work-item-title">${workItem.title}</span>
           ${releaseBadge}
+          ${relatedBadge}
           ${progressBadge}
         </div>
       `;

@@ -44,11 +44,19 @@ export default async function getWorkItemChildrenWithRelated(workItemId) {
   if (relevantRelations.length === 0) {
     return [];
   }
-
-  // Extract IDs from the URLs
+  // Extract IDs from the URLs and create a mapping of ID to relationship type
   const relatedIds = relevantRelations.map(relation => {
     const urlParts = relation.url.split('/');
     return urlParts[urlParts.length - 1];
+  });
+
+  // Create mapping from work item ID to relationship type
+  const relationshipMap = new Map();
+  relevantRelations.forEach(relation => {
+    const urlParts = relation.url.split('/');
+    const id = urlParts[urlParts.length - 1];
+    const isRelatedItem = relation.rel === 'System.LinkTypes.Related';
+    relationshipMap.set(id, isRelatedItem ? 'related' : 'hierarchy');
   });
 
   // Get detailed information for related work items
@@ -83,11 +91,11 @@ export default async function getWorkItemChildrenWithRelated(workItemId) {
     
     return true;
   });
-  
-  return activeChildren.map(child => ({
+    return activeChildren.map(child => ({
     id: child.id,
     title: child.fields['System.Title'],
     state: child.fields['System.State'],
-    workItemType: child.fields['System.WorkItemType']
+    workItemType: child.fields['System.WorkItemType'],
+    relationshipType: relationshipMap.get(child.id.toString()) || 'hierarchy'
   }));
 }

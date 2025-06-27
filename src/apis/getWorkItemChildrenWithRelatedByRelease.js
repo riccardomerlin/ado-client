@@ -50,11 +50,19 @@ export default async function getWorkItemChildrenWithRelatedByRelease(workItemId
   if (relevantRelations.length === 0) {
     return [];
   }
-
-  // Extract IDs from the URLs
+  // Extract IDs from the URLs and create a mapping of ID to relationship type
   const relatedIds = relevantRelations.map(relation => {
     const urlParts = relation.url.split('/');
     return urlParts[urlParts.length - 1];
+  });
+
+  // Create mapping from work item ID to relationship type
+  const relationshipMap = new Map();
+  relevantRelations.forEach(relation => {
+    const urlParts = relation.url.split('/');
+    const id = urlParts[urlParts.length - 1];
+    const isRelatedItem = relation.rel === 'System.LinkTypes.Related';
+    relationshipMap.set(id, isRelatedItem ? 'related' : 'hierarchy');
   });
 
   // Get detailed information for related work items
@@ -101,12 +109,12 @@ export default async function getWorkItemChildrenWithRelatedByRelease(workItemId
     // For Epics, Features, and PBIs, filter by Release when includeAllReleases is false
     return releaseField === releaseValue;
   });
-  
-  return filteredChildren.map(child => ({
+    return filteredChildren.map(child => ({
     id: child.id,
     title: child.fields['System.Title'],
     state: child.fields['System.State'],
     workItemType: child.fields['System.WorkItemType'],
-    release: child.fields[releaseFieldName] || 'No Release'
+    release: child.fields[releaseFieldName] || 'No Release',
+    relationshipType: relationshipMap.get(child.id.toString()) || 'hierarchy'
   }));
 }
