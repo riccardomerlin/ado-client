@@ -5,7 +5,7 @@ import createTasksFromTemplates from './apis/createTasksFromTemplates.js';
 import getTemplates from './apis/getTemplates.js';
 import getEpicsByRelease from './apis/getEpicsByRelease.js';
 import getEpicProgressByRelease from './apis/getEpicProgressByRelease.js';
-import { getChildrenWithBottomUpProgress } from './utils/hierarchyProgressCalculator.js';
+import { getChildrenWithBottomUpProgress, getChildrenWithBottomUpProgressUsingStrategy } from './utils/hierarchyProgressCalculator.js';
 import { promises as fs } from 'fs';
 
 const configPath = path.resolve('config.json');
@@ -79,12 +79,45 @@ fastify.get('/api/epics', async (request, reply) => {
 
 fastify.get('/api/epics/:id/progress', async (request, reply) => {
   const { id } = request.params;
-  const { release, includeAllReleases } = request.query;
+  const { release, includeAllReleases, relationshipStrategy } = request.query;
   
   try {
     const includeAll = includeAllReleases === 'true';
-    const progressData = await getEpicProgressByRelease(id, release, includeAll);
-    reply.send(progressData);
+    const strategy = relationshipStrategy || 'hierarchy-only';
+    
+    // Use strategy-based approach if a specific strategy is requested
+    let childrenWithProgress;
+    if (strategy !== 'hierarchy-only') {
+      childrenWithProgress = await getChildrenWithBottomUpProgressUsingStrategy(id, release, includeAll, strategy);
+    } else {
+      // Use original approach for backward compatibility
+      const progressData = await getEpicProgressByRelease(id, release, includeAll);
+      reply.send(progressData);
+      return;
+    }
+    
+    // Calculate Epic progress using the same logic as the original endpoint
+    if (childrenWithProgress.length === 0) {
+      reply.send({
+        epicProgress: 0,
+        children: [],
+        calculationMethod: 'no-children'
+      });
+      return;
+    }
+
+    const totalProgress = childrenWithProgress.reduce((sum, child) => sum + (child.progress || 0), 0);
+    const epicProgress = Math.round(totalProgress / childrenWithProgress.length);
+    
+    reply.send({
+      epicProgress,
+      children: childrenWithProgress,
+      calculationMethod: release ? 'release-filtered-bottom-up-with-strategy' : 'all-children-bottom-up-with-strategy',
+      childCount: childrenWithProgress.length,
+      totalProgress,
+      releaseValue: release,
+      relationshipStrategy: strategy
+    });
   } catch (error) {
     reply.status(500).send({ error: error.message });
   }
@@ -92,12 +125,25 @@ fastify.get('/api/epics/:id/progress', async (request, reply) => {
 
 fastify.get('/api/workitems/:id/children', async (request, reply) => {
   const { id } = request.params;
-  const { release, includeAllReleases } = request.query;
+  const { release, includeAllReleases, relationshipStrategy, isNestedExpansion } = request.query;
   
   try {
     // Use the new bottom-up approach for accurate progress calculation
     const includeAll = includeAllReleases === 'true';
-    const childrenWithProgress = await getChildrenWithBottomUpProgress(id, release, includeAll);
+    const isNested = isNestedExpansion === 'true';
+    
+    // If this is a nested expansion from the UI, force hierarchy-only behavior
+    // regardless of the relationship strategy setting
+    const effectiveStrategy = isNested ? 'hierarchy-only' : (relationshipStrategy || 'hierarchy-only');
+    
+    // Use strategy-based approach if a specific strategy is requested
+    let childrenWithProgress;
+    if (effectiveStrategy !== 'hierarchy-only') {
+      childrenWithProgress = await getChildrenWithBottomUpProgressUsingStrategy(id, release, includeAll, effectiveStrategy);
+    } else {
+      // Use original approach for backward compatibility
+      childrenWithProgress = await getChildrenWithBottomUpProgress(id, release, includeAll);
+    }
     
     reply.send(childrenWithProgress);
   } catch (error) {

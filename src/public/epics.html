@@ -163,6 +163,17 @@
             </div>
           </div>
         </div>
+        <div class="form-row mt-2">
+          <div class="col-md-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="includeRelatedItems">
+              <label class="form-check-label" for="includeRelatedItems" title="When checked, includes Related work items alongside direct children in progress calculations. This helps capture cross-functional work that contributes to epic/feature progress.">
+                Include Related items in progress calculation
+                <i class="fas fa-info-circle text-muted ml-1" style="font-size: 12px;"></i>
+              </label>
+            </div>
+          </div>
+        </div>
         <div class="form-row mt-3">
           <div class="col-md-12 d-flex justify-content-end">
             <button id="loadEpicsBtn" class="btn btn-primary mr-2">Load Epics</button>
@@ -366,11 +377,14 @@
           
           if (childrenContainer.children.length === 0) {
             childrenContainer.innerHTML = '<div class="loading">Loading children...</div>';
-            childrenContainer.style.display = 'block';
-              const releaseParam = currentRelease ? `&release=${encodeURIComponent(currentRelease)}` : '';
+            childrenContainer.style.display = 'block';            const releaseParam = currentRelease ? `&release=${encodeURIComponent(currentRelease)}` : '';
             const includeAllReleases = document.getElementById('includeAllReleases').checked;
             const includeAllParam = includeAllReleases ? '&includeAllReleases=true' : '';
-            const response = await fetch(`/api/workitems/${workItemId}/children?dummy=1${releaseParam}${includeAllParam}`);
+            const includeRelatedItems = document.getElementById('includeRelatedItems').checked;
+            const strategyParam = includeRelatedItems ? '&relationshipStrategy=hierarchy-with-related' : '';
+            // If level > 0, this is a nested expansion and should use hierarchy-only regardless of strategy
+            const nestedParam = level > 0 ? '&isNestedExpansion=true' : '';
+            const response = await fetch(`/api/workitems/${workItemId}/children?dummy=1${releaseParam}${includeAllParam}${strategyParam}${nestedParam}`);
             if (!response.ok) {
               throw new Error('Failed to load children');
             }
@@ -396,25 +410,26 @@
         workItemDiv.classList.remove('expanded');
         childrenContainer.style.display = 'none';
       }
-    }
-
-    async function calculateEpicProgress(epic, release) {
+    }    async function calculateEpicProgress(epic, release) {
       try {
         const releaseParam = release ? `?release=${encodeURIComponent(release)}` : '';
         const includeAllReleases = document.getElementById('includeAllReleases').checked;
         const includeAllParam = includeAllReleases ? `${releaseParam ? '&' : '?'}includeAllReleases=true` : '';
-        const cacheBuster = `${releaseParam || includeAllParam ? '&' : '?'}_cb=${Date.now()}`;
-        const progressResponse = await fetch(`/api/epics/${epic.id}/progress${releaseParam}${includeAllParam}${cacheBuster}`);
+        const includeRelatedItems = document.getElementById('includeRelatedItems').checked;
+        const strategyParam = includeRelatedItems ? `${releaseParam || includeAllParam ? '&' : '?'}relationshipStrategy=hierarchy-with-related` : '';
+        const cacheBuster = `${releaseParam || includeAllParam || strategyParam ? '&' : '?'}_cb=${Date.now()}`;
+        const progressResponse = await fetch(`/api/epics/${epic.id}/progress${releaseParam}${includeAllParam}${strategyParam}${cacheBuster}`);
         
         if (progressResponse.ok) {
           const progressData = await progressResponse.json();
           updateWorkItemProgress(epic.id, progressData.epicProgress, progressData.children.length > 0);
-        } else {
-          // Fallback to client-side calculation if backend fails
+        } else {          // Fallback to client-side calculation if backend fails
           const releaseParam = release ? `&release=${encodeURIComponent(release)}` : '';
           const includeAllReleases = document.getElementById('includeAllReleases').checked;
           const includeAllParam = includeAllReleases ? '&includeAllReleases=true' : '';
-          const childrenResponse = await fetch(`/api/workitems/${epic.id}/children?dummy=1${releaseParam}${includeAllParam}`);
+          const includeRelatedItems = document.getElementById('includeRelatedItems').checked;
+          const strategyParam = includeRelatedItems ? '&relationshipStrategy=hierarchy-with-related' : '';
+          const childrenResponse = await fetch(`/api/workitems/${epic.id}/children?dummy=1${releaseParam}${includeAllParam}${strategyParam}`);
           
           if (childrenResponse.ok) {
             const children = await childrenResponse.json();
@@ -513,9 +528,15 @@
         loadEpics();
       }
     });
-    
-    // Refresh view when checkbox state changes
+      // Refresh view when checkbox state changes
     document.getElementById('includeAllReleases').addEventListener('change', () => {
+      if (currentRelease && currentAreaPath) {
+        loadEpics();
+      }
+    });
+    
+    // Refresh view when relationship strategy changes
+    document.getElementById('includeRelatedItems').addEventListener('change', () => {
       if (currentRelease && currentAreaPath) {
         loadEpics();
       }
