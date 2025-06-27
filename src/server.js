@@ -49,7 +49,8 @@ fastify.get('/api/config', async (_, reply) => {
       orgUrl: config.orgUrl,
       projectName: config.projectName,
       defaultRelease: config.defaultRelease,
-      defaultAreaPath: config.defaultAreaPath
+      defaultAreaPath: config.defaultAreaPath,
+      defaultRelationshipStrategy: config.defaultRelationshipStrategy || 'hierarchy-only'
     };
     reply.send(clientConfig);
   } catch (error) {
@@ -83,7 +84,7 @@ fastify.get('/api/epics/:id/progress', async (request, reply) => {
   
   try {
     const includeAll = includeAllReleases === 'true';
-    const strategy = relationshipStrategy || 'hierarchy-only';
+    const strategy = relationshipStrategy || config.defaultRelationshipStrategy || 'hierarchy-only';
     
     // Use strategy-based approach if a specific strategy is requested
     let childrenWithProgress;
@@ -131,10 +132,9 @@ fastify.get('/api/workitems/:id/children', async (request, reply) => {
     // Use the new bottom-up approach for accurate progress calculation
     const includeAll = includeAllReleases === 'true';
     const isNested = isNestedExpansion === 'true';
-    
-    // If this is a nested expansion from the UI, force hierarchy-only behavior
+      // If this is a nested expansion from the UI, force hierarchy-only behavior
     // regardless of the relationship strategy setting
-    const effectiveStrategy = isNested ? 'hierarchy-only' : (relationshipStrategy || 'hierarchy-only');
+    const effectiveStrategy = isNested ? 'hierarchy-only' : (relationshipStrategy || config.defaultRelationshipStrategy || 'hierarchy-only');
     
     // Use strategy-based approach if a specific strategy is requested
     let childrenWithProgress;

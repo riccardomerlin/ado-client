@@ -163,17 +163,6 @@
             </div>
           </div>
         </div>
-        <div class="form-row mt-2">
-          <div class="col-md-12">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="includeRelatedItems">
-              <label class="form-check-label" for="includeRelatedItems" title="When checked, includes Related work items alongside direct children in progress calculations. This helps capture cross-functional work that contributes to epic/feature progress.">
-                Include Related items in progress calculation
-                <i class="fas fa-info-circle text-muted ml-1" style="font-size: 12px;"></i>
-              </label>
-            </div>
-          </div>
-        </div>
         <div class="form-row mt-3">
           <div class="col-md-12 d-flex justify-content-end">
             <button id="loadEpicsBtn" class="btn btn-primary mr-2">Load Epics</button>
@@ -192,16 +181,20 @@
     </div>
     
     <div id="epicsContainer"></div>
-  </div>
-  <script>
+  </div>  <script>
     let currentRelease = '';
     let currentAreaPath = '';
-    let config = null;    // Load configuration on page load
+    let config = null;
+    let defaultRelationshipStrategy = 'hierarchy-with-related';    // Load configuration on page load
     async function loadConfig() {
       try {
         const response = await fetch('/api/config');
         if (response.ok) {
           config = await response.json();
+          // Set default relationship strategy from config
+          if (config.defaultRelationshipStrategy) {
+            defaultRelationshipStrategy = config.defaultRelationshipStrategy;
+          }
           // Set default values in the input boxes if they are available in config
           if (config.defaultRelease) {
             document.getElementById('releaseInput').value = config.defaultRelease;
@@ -380,8 +373,7 @@
             childrenContainer.style.display = 'block';            const releaseParam = currentRelease ? `&release=${encodeURIComponent(currentRelease)}` : '';
             const includeAllReleases = document.getElementById('includeAllReleases').checked;
             const includeAllParam = includeAllReleases ? '&includeAllReleases=true' : '';
-            const includeRelatedItems = document.getElementById('includeRelatedItems').checked;
-            const strategyParam = includeRelatedItems ? '&relationshipStrategy=hierarchy-with-related' : '';
+            const strategyParam = defaultRelationshipStrategy === 'hierarchy-with-related' ? '&relationshipStrategy=hierarchy-with-related' : '';
             // If level > 0, this is a nested expansion and should use hierarchy-only regardless of strategy
             const nestedParam = level > 0 ? '&isNestedExpansion=true' : '';
             const response = await fetch(`/api/workitems/${workItemId}/children?dummy=1${releaseParam}${includeAllParam}${strategyParam}${nestedParam}`);
@@ -415,20 +407,19 @@
         const releaseParam = release ? `?release=${encodeURIComponent(release)}` : '';
         const includeAllReleases = document.getElementById('includeAllReleases').checked;
         const includeAllParam = includeAllReleases ? `${releaseParam ? '&' : '?'}includeAllReleases=true` : '';
-        const includeRelatedItems = document.getElementById('includeRelatedItems').checked;
-        const strategyParam = includeRelatedItems ? `${releaseParam || includeAllParam ? '&' : '?'}relationshipStrategy=hierarchy-with-related` : '';
+        const strategyParam = defaultRelationshipStrategy === 'hierarchy-with-related' ? `${releaseParam || includeAllParam ? '&' : '?'}relationshipStrategy=hierarchy-with-related` : '';
         const cacheBuster = `${releaseParam || includeAllParam || strategyParam ? '&' : '?'}_cb=${Date.now()}`;
         const progressResponse = await fetch(`/api/epics/${epic.id}/progress${releaseParam}${includeAllParam}${strategyParam}${cacheBuster}`);
         
         if (progressResponse.ok) {
           const progressData = await progressResponse.json();
           updateWorkItemProgress(epic.id, progressData.epicProgress, progressData.children.length > 0);
-        } else {          // Fallback to client-side calculation if backend fails
+        } else {
+          // Fallback to client-side calculation if backend fails
           const releaseParam = release ? `&release=${encodeURIComponent(release)}` : '';
           const includeAllReleases = document.getElementById('includeAllReleases').checked;
           const includeAllParam = includeAllReleases ? '&includeAllReleases=true' : '';
-          const includeRelatedItems = document.getElementById('includeRelatedItems').checked;
-          const strategyParam = includeRelatedItems ? '&relationshipStrategy=hierarchy-with-related' : '';
+          const strategyParam = defaultRelationshipStrategy === 'hierarchy-with-related' ? '&relationshipStrategy=hierarchy-with-related' : '';
           const childrenResponse = await fetch(`/api/workitems/${epic.id}/children?dummy=1${releaseParam}${includeAllParam}${strategyParam}`);
           
           if (childrenResponse.ok) {
@@ -527,16 +518,8 @@
       if (e.key === 'Enter') {
         loadEpics();
       }
-    });
-      // Refresh view when checkbox state changes
+    });    // Refresh view when checkbox state changes
     document.getElementById('includeAllReleases').addEventListener('change', () => {
-      if (currentRelease && currentAreaPath) {
-        loadEpics();
-      }
-    });
-    
-    // Refresh view when relationship strategy changes
-    document.getElementById('includeRelatedItems').addEventListener('change', () => {
       if (currentRelease && currentAreaPath) {
         loadEpics();
       }
