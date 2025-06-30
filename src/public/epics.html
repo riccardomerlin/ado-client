@@ -272,15 +272,71 @@
     let currentAreaPath = '';
     let config = null;
     let defaultRelationshipStrategy = 'hierarchy-with-related';
-    
-    // Release progress tracking
+      // Release progress tracking
     let releaseProgressTracker = {
       totalEpics: 0,
       completedCalculations: 0,
       totalProgress: 0,
       completedEpics: 0,
       isCalculating: false
-    };// Load configuration on page load
+    };
+
+    // URL parameter management
+    function getUrlParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return {
+        release: urlParams.get('release') || '',
+        areaPath: urlParams.get('areaPath') || '',
+        includeAllReleases: urlParams.get('includeAllReleases') === 'true'
+      };
+    }
+
+    function updateUrlParams(release, areaPath, includeAllReleases) {
+      const url = new URL(window.location);
+      
+      if (release) {
+        url.searchParams.set('release', release);
+      } else {
+        url.searchParams.delete('release');
+      }
+      
+      if (areaPath) {
+        url.searchParams.set('areaPath', areaPath);
+      } else {
+        url.searchParams.delete('areaPath');
+      }
+      
+      if (includeAllReleases) {
+        url.searchParams.set('includeAllReleases', 'true');
+      } else {
+        url.searchParams.delete('includeAllReleases');
+      }
+      
+      window.history.replaceState({}, '', url);
+    }    function loadFromUrlParams() {
+      const params = getUrlParams();
+      
+      // Set form values from URL parameters
+      if (params.release) {
+        document.getElementById('releaseInput').value = params.release;
+      }
+      if (params.areaPath) {
+        document.getElementById('areaPathInput').value = params.areaPath;
+      }
+      document.getElementById('includeAllReleases').checked = params.includeAllReleases;
+      
+      // Update URL with current values (in case some were invalid)
+      updateUrlParams(
+        document.getElementById('releaseInput').value.trim(),
+        document.getElementById('areaPathInput').value.trim(),
+        document.getElementById('includeAllReleases').checked
+      );
+      
+      // Auto-load epics if both release and area path are provided
+      if (params.release && params.areaPath) {
+        loadEpics();
+      }
+    }// Load configuration on page load
     async function loadConfig() {
       try {
         const response = await fetch('/api/config');
@@ -290,11 +346,13 @@
           if (config.defaultRelationshipStrategy) {
             defaultRelationshipStrategy = config.defaultRelationshipStrategy;
           }
-          // Set default values in the input boxes if they are available in config
-          if (config.defaultRelease) {
+          
+          // Only set default values from config if URL parameters are not present
+          const urlParams = getUrlParams();
+          if (config.defaultRelease && !urlParams.release) {
             document.getElementById('releaseInput').value = config.defaultRelease;
           }
-          if (config.defaultAreaPath) {
+          if (config.defaultAreaPath && !urlParams.areaPath) {
             document.getElementById('areaPathInput').value = config.defaultAreaPath;
           }
         } else {
@@ -612,11 +670,10 @@
         const fallbackProgress = epic.state === 'Done' ? 100 : 0;
         updateWorkItemProgress(epic.id, fallbackProgress, true);
       }
-    }
-
-    async function loadEpics() {
+    }    async function loadEpics() {
       const release = document.getElementById('releaseInput').value.trim();
       const areaPath = document.getElementById('areaPathInput').value.trim();
+      const includeAllReleases = document.getElementById('includeAllReleases').checked;
       
       if (!release) {
         showAlert('Please enter a release value', 'warning');
@@ -626,7 +683,12 @@
       if (!areaPath) {
         showAlert('Please enter an area path', 'warning');
         return;
-      }      currentRelease = release;
+      }
+
+      // Update URL parameters
+      updateUrlParams(release, areaPath, includeAllReleases);
+
+      currentRelease = release;
       currentAreaPath = areaPath;
       showLoading(true);
       document.getElementById('epicsContainerBody').innerHTML = '';
@@ -674,31 +736,49 @@
       if (currentRelease && currentAreaPath) {
         loadEpics();
       }
-    }
-
-    // Event listeners
+    }    // Event listeners
     document.getElementById('loadEpicsBtn').addEventListener('click', loadEpics);
     document.getElementById('refreshBtn').addEventListener('click', refresh);
+    
+    // Update URL when form values change
+    document.getElementById('releaseInput').addEventListener('input', updateUrlFromForm);
+    document.getElementById('areaPathInput').addEventListener('input', updateUrlFromForm);
+    document.getElementById('includeAllReleases').addEventListener('change', updateUrlFromForm);
+    
+    function updateUrlFromForm() {
+      const release = document.getElementById('releaseInput').value.trim();
+      const areaPath = document.getElementById('areaPathInput').value.trim();
+      const includeAllReleases = document.getElementById('includeAllReleases').checked;
+      updateUrlParams(release, areaPath, includeAllReleases);
+    }
     
     document.getElementById('releaseInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         loadEpics();
       }
     });
-      document.getElementById('areaPathInput').addEventListener('keypress', (e) => {
+    document.getElementById('areaPathInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         loadEpics();
       }
-    });    // Refresh view when checkbox state changes
+    });
+
+    // Refresh view when checkbox state changes (for actual data loading)
     document.getElementById('includeAllReleases').addEventListener('change', () => {
       if (currentRelease && currentAreaPath) {
         loadEpics();
       }
-    });
-      // Auto-focus on release input and load config
+    });    // Auto-focus on release input and load config
     document.addEventListener('DOMContentLoaded', async () => {
       await loadConfig();
-      document.getElementById('releaseInput').focus();
+      
+      // Load from URL parameters first (takes precedence over config defaults)
+      loadFromUrlParams();
+      
+      // Focus on release input if not already populated
+      if (!document.getElementById('releaseInput').value) {
+        document.getElementById('releaseInput').focus();
+      }
       
       // Add event listener for epic details collapse/expand
       $('#epicsContainer').on('show.bs.collapse', function () {
