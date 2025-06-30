@@ -132,11 +132,30 @@
     .bg-danger {
       background-color: #dc3545 !important;
     }
-    
-    /* Ensure progress text is visible on colored backgrounds */
+      /* Ensure progress text is visible on colored backgrounds */
     .progress-bar {
       color: #fff !important;
       font-weight: bold;
+    }
+      /* Current release header styling */
+    .current-release-header {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 123, 255, 0.1);
+    }
+    
+    .current-release-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .current-release-subtitle {
+      opacity: 0.9;
+      margin-bottom: 0;
     }
   </style>
 </head>
@@ -170,20 +189,49 @@
         <li class="breadcrumb-item active" aria-current="page">Epic Hierarchy Viewer</li>
       </ol>
     </nav>
+      <h1 class="mb-4">Epic Hierarchy Viewer</h1>
+      <!-- Current Release Header (shown when loaded from URL) -->
+    <div id="currentReleaseHeader" style="display: none;" class="current-release-header">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <div class="current-release-title">
+            <i class="fas fa-rocket mr-2"></i>
+            Release: <span id="currentReleaseValue"></span>
+          </div>
+          <div class="current-release-subtitle">
+            Area Path: <span id="currentAreaPathValue"></span>
+          </div>
+        </div>
+        <div class="col-md-4 text-right">
+          <button id="toggleOptionsBtn" class="btn btn-light btn-sm" type="button">
+            <i class="fas fa-cog mr-1"></i>
+            Options
+          </button>
+        </div>
+      </div>
+    </div>
     
-    <h1 class="mb-4">Epic Hierarchy Viewer</h1>
-    
-    <div class="card mb-4">
-      <div class="card-body">        <div class="form-row">  
+    <!-- Search Form -->
+    <div id="searchFormContainer" class="card mb-4">
+      <div class="card-header">
+        <h6 class="mb-0">
+          <i class="fas fa-search mr-2"></i>
+          Search Options
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="form-row">  
           <div class="col-md-6">
             <label for="releaseInput">Release:</label>
             <input type="text" id="releaseInput" class="form-control" placeholder="Enter release value" required>
           </div>
           <div class="col-md-6">
             <label for="areaPathInput">Area Path:</label>
-            <input type="text" id="areaPathInput" class="form-control" placeholder="Enter area path" required>
+            <input type="text" id="areaPathInput" class="form-control" placeholder="Auto-generated from release">
+            <small class="form-text text-muted">Area path is automatically set to: git1601\{Release} Product Roadmap</small>
           </div>
-        </div>        <div class="form-row mt-3">
+        </div>
+        <div class="form-row mt-3">
           <div class="col-md-12">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" id="includeAllReleases">
@@ -201,7 +249,7 @@
           </div>
         </div>
       </div>
-    </div>    <div id="alertContainer"></div>
+    </div><div id="alertContainer"></div>
     <div id="loadingContainer" class="text-center" style="display: none;">
       <div class="spinner-border" role="status">
         <span class="sr-only">Loading...</span>
@@ -279,8 +327,8 @@
       totalProgress: 0,
       completedEpics: 0,
       isCalculating: false
-    };
-
+    };    
+    
     // URL parameter management
     function getUrlParams() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -291,18 +339,68 @@
       };
     }
 
+    function composeAreaPath(release) {
+      if (!release || release.trim() === '') {
+        return '';
+      }
+      return `git1601\\${release.trim()} Product Roadmap`;
+    }    function updateAreaPathFromRelease() {
+      const release = document.getElementById('releaseInput').value.trim();
+      const areaPathInput = document.getElementById('areaPathInput');
+      
+      if (release) {
+        areaPathInput.value = composeAreaPath(release);
+      } else {
+        areaPathInput.value = '';
+      }
+    }    function showCurrentReleaseHeader(release, areaPath) {
+      document.getElementById('currentReleaseValue').textContent = release;
+      document.getElementById('currentAreaPathValue').textContent = areaPath;
+      document.getElementById('currentReleaseHeader').style.display = 'block';
+      // Hide search form initially when header is shown
+      document.getElementById('searchFormContainer').style.display = 'none';
+    }
+
+    function updateCurrentReleaseHeader(release, areaPath) {
+      // Update header content without changing form visibility
+      document.getElementById('currentReleaseValue').textContent = release;
+      document.getElementById('currentAreaPathValue').textContent = areaPath;
+      document.getElementById('currentReleaseHeader').style.display = 'block';
+      // Do NOT change the search form visibility - let the toggle button control it
+    }
+
+    function hideCurrentReleaseHeader() {
+      document.getElementById('currentReleaseHeader').style.display = 'none';
+      // Show search form when not using URL params
+      document.getElementById('searchFormContainer').style.display = 'block';
+    }    function toggleSearchForm() {
+      const container = document.getElementById('searchFormContainer');
+      const btn = document.getElementById('toggleOptionsBtn');
+      const icon = btn.querySelector('i');
+      
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        icon.className = 'fas fa-chevron-up mr-1';
+        btn.innerHTML = '<i class="fas fa-chevron-up mr-1"></i>Hide Options';
+      } else {
+        container.style.display = 'none';
+        icon.className = 'fas fa-cog mr-1';
+        btn.innerHTML = '<i class="fas fa-cog mr-1"></i>Options';
+      }
+    }
+
     function updateUrlParams(release, areaPath, includeAllReleases) {
       const url = new URL(window.location);
       
       if (release) {
         url.searchParams.set('release', release);
+        // Always use composed area path when release is provided
+        const composedAreaPath = composeAreaPath(release);
+        if (composedAreaPath) {
+          url.searchParams.set('areaPath', composedAreaPath);
+        }
       } else {
         url.searchParams.delete('release');
-      }
-      
-      if (areaPath) {
-        url.searchParams.set('areaPath', areaPath);
-      } else {
         url.searchParams.delete('areaPath');
       }
       
@@ -315,28 +413,44 @@
       window.history.replaceState({}, '', url);
     }    function loadFromUrlParams() {
       const params = getUrlParams();
-      
-      // Set form values from URL parameters
+        // Set form values from URL parameters (only on initial page load)
       if (params.release) {
         document.getElementById('releaseInput').value = params.release;
-      }
-      if (params.areaPath) {
+        // Auto-compose area path based on release
+        updateAreaPathFromRelease();
+        
+        // Set global current release variable
+        currentRelease = params.release;
+        currentAreaPath = document.getElementById('areaPathInput').value;
+        
+        // Show current release header and collapse form initially
+        showCurrentReleaseHeader(params.release, currentAreaPath);
+        
+      } else if (params.areaPath) {
+        // Only set areaPath directly if no release is provided (backward compatibility)
         document.getElementById('areaPathInput').value = params.areaPath;
+        hideCurrentReleaseHeader();
+      } else {
+        hideCurrentReleaseHeader();
       }
+      
       document.getElementById('includeAllReleases').checked = params.includeAllReleases;
       
       // Update URL with current values (in case some were invalid)
       updateUrlParams(
         document.getElementById('releaseInput').value.trim(),
         document.getElementById('areaPathInput').value.trim(),
-        document.getElementById('includeAllReleases').checked
-      );
-      
-      // Auto-load epics if both release and area path are provided
-      if (params.release && params.areaPath) {
-        loadEpics();
+        document.getElementById('includeAllReleases').checked      );
+        // Auto-load epics if release is provided (area path will be auto-composed)
+      if (params.release) {
+        // Use setTimeout to ensure DOM is fully ready
+        setTimeout(() => {
+          loadEpics();
+        }, 200);
       }
-    }// Load configuration on page load
+    }
+
+    // Load configuration on page load
     async function loadConfig() {
       try {
         const response = await fetch('/api/config');
@@ -351,8 +465,11 @@
           const urlParams = getUrlParams();
           if (config.defaultRelease && !urlParams.release) {
             document.getElementById('releaseInput').value = config.defaultRelease;
+            // Auto-compose area path based on default release
+            updateAreaPathFromRelease();
           }
-          if (config.defaultAreaPath && !urlParams.areaPath) {
+          if (config.defaultAreaPath && !urlParams.areaPath && !config.defaultRelease) {
+            // Only use defaultAreaPath if no defaultRelease is set (to avoid overriding composed path)
             document.getElementById('areaPathInput').value = config.defaultAreaPath;
           }
         } else {
@@ -463,9 +580,7 @@
       
       // Update release progress if this is a top-level epic
       updateReleaseProgress(workItemId, progress);
-    }
-
-    function initializeReleaseProgress(totalEpics) {
+    }    function initializeReleaseProgress(totalEpics) {
       releaseProgressTracker = {
         totalEpics: totalEpics,
         completedCalculations: 0,
@@ -476,6 +591,10 @@
       
       document.getElementById('releaseProgressContainer').style.display = 'block';
       document.getElementById('epicDetailsContainer').style.display = 'block';
+      
+      // Keep epic details collapsed by default when loaded from URL
+      $('#epicsContainer').collapse('hide');
+      
       document.getElementById('totalEpicsCount').textContent = totalEpics;
       document.getElementById('completedEpicsCount').textContent = '0';
       document.getElementById('releaseProgressText').textContent = 'Calculating...';
@@ -671,19 +790,23 @@
         updateWorkItemProgress(epic.id, fallbackProgress, true);
       }
     }    async function loadEpics() {
+      // Get values from the single form
       const release = document.getElementById('releaseInput').value.trim();
-      const areaPath = document.getElementById('areaPathInput').value.trim();
+      let areaPath = document.getElementById('areaPathInput').value.trim();
       const includeAllReleases = document.getElementById('includeAllReleases').checked;
       
       if (!release) {
         showAlert('Please enter a release value', 'warning');
         return;
       }
-      
-      if (!areaPath) {
-        showAlert('Please enter an area path', 'warning');
-        return;
+        // Auto-compose area path based on release if it's empty
+      if (!areaPath && release) {
+        areaPath = composeAreaPath(release);
+        document.getElementById('areaPathInput').value = areaPath;
       }
+      
+      // Update current release header content without changing form visibility
+      updateCurrentReleaseHeader(release, areaPath);
 
       // Update URL parameters
       updateUrlParams(release, areaPath, includeAllReleases);
@@ -730,33 +853,42 @@
         showLoading(false);
         showAlert('Failed to load epics: ' + error.message, 'danger');
       }
-    }
-
-    function refresh() {
-      if (currentRelease && currentAreaPath) {
+    }    function refresh() {
+      if (currentRelease) {
         loadEpics();
       }
     }    // Event listeners
     document.getElementById('loadEpicsBtn').addEventListener('click', loadEpics);
     document.getElementById('refreshBtn').addEventListener('click', refresh);
     
-    // Update URL when form values change
-    document.getElementById('releaseInput').addEventListener('input', updateUrlFromForm);
-    document.getElementById('areaPathInput').addEventListener('input', updateUrlFromForm);
-    document.getElementById('includeAllReleases').addEventListener('change', updateUrlFromForm);
+    // Update area path and URL when release input changes
+    document.getElementById('releaseInput').addEventListener('input', function() {
+      updateAreaPathFromRelease();
+      updateUrlFromForm();
+    });
     
+    // Update URL when area path changes
+    document.getElementById('areaPathInput').addEventListener('input', function() {
+      updateUrlFromForm();
+    });
+    
+    // Update URL when checkbox changes
+    document.getElementById('includeAllReleases').addEventListener('change', function() {
+      updateUrlFromForm();
+    });
     function updateUrlFromForm() {
       const release = document.getElementById('releaseInput').value.trim();
       const areaPath = document.getElementById('areaPathInput').value.trim();
       const includeAllReleases = document.getElementById('includeAllReleases').checked;
       updateUrlParams(release, areaPath, includeAllReleases);
     }
-    
+      // Key press event listeners
     document.getElementById('releaseInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         loadEpics();
       }
     });
+    
     document.getElementById('areaPathInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         loadEpics();
@@ -765,7 +897,7 @@
 
     // Refresh view when checkbox state changes (for actual data loading)
     document.getElementById('includeAllReleases').addEventListener('change', () => {
-      if (currentRelease && currentAreaPath) {
+      if (currentRelease) {
         loadEpics();
       }
     });    // Auto-focus on release input and load config
@@ -774,6 +906,14 @@
       
       // Load from URL parameters first (takes precedence over config defaults)
       loadFromUrlParams();
+      
+      // Add event listener for toggle options button (with delay to ensure DOM is ready)
+      setTimeout(() => {
+        const toggleBtn = document.getElementById('toggleOptionsBtn');
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', toggleSearchForm);
+        }
+      }, 100);
       
       // Focus on release input if not already populated
       if (!document.getElementById('releaseInput').value) {
