@@ -12,12 +12,12 @@
       <a class="navbar-brand" href="/">ADO Client</a>
       <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
+      </button>      <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ml-auto">
           <li class="nav-item">
             <a class="nav-link" href="/">Home</a>
-          </li>          <li class="nav-item active">
+          </li>
+          <li class="nav-item active">
             <a class="nav-link" href="/tasks">Tasks <span class="sr-only">(current)</span></a>
           </li>
           <li class="nav-item">
@@ -28,8 +28,7 @@
     </div>
   </nav>
 
-  <div class="container mt-4">
-    <nav aria-label="breadcrumb">
+  <div class="container mt-4">    <nav aria-label="breadcrumb">
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="/">Home</a></li>
         <li class="breadcrumb-item active" aria-current="page">Task Management</li>
@@ -181,9 +180,7 @@
       } finally {
         setLoading(false);
       }
-    });
-
-    // Load templates when page loads
+    });    // Load templates when page loads
     document.addEventListener('DOMContentLoaded', loadTemplates);
   </script>
 

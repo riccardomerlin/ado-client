@@ -164,15 +164,15 @@
       <a class="navbar-brand" href="/">ADO Client</a>
       <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
+      </button>      <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ml-auto">
           <li class="nav-item">
             <a class="nav-link" href="/">Home</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="/tasks">Tasks</a>
-          </li>          <li class="nav-item active">
+          </li>
+          <li class="nav-item active">
             <a class="nav-link" href="/epics">Release <span class="sr-only">(current)</span></a>
           </li>
         </ul>
@@ -921,10 +921,41 @@
       $('#epicsContainer').on('show.bs.collapse', function () {
         document.getElementById('epicDetailsToggleIcon').className = 'fas fa-chevron-down mr-2';
       });
-      
-      $('#epicsContainer').on('hide.bs.collapse', function () {
+        $('#epicsContainer').on('hide.bs.collapse', function () {
         document.getElementById('epicDetailsToggleIcon').className = 'fas fa-chevron-right mr-2';
       });
+
+      // Simple hash-based navigation
+      function updateActiveNav() {
+        const hash = window.location.hash || '#/';
+        const navItems = document.querySelectorAll('.nav-item');
+        
+        // Remove active class from all nav items
+        navItems.forEach(item => {
+          item.classList.remove('active');
+          const link = item.querySelector('.nav-link');
+          const span = link.querySelector('.sr-only');
+          if (span) span.remove();
+        });
+        
+        // Add active class to current nav item
+        let activeId = 'nav-home';
+        if (hash.includes('/tasks')) activeId = 'nav-tasks';
+        else if (hash.includes('/epics')) activeId = 'nav-epics';
+        
+        const activeItem = document.getElementById(activeId);
+        if (activeItem) {
+          activeItem.classList.add('active');
+          const link = activeItem.querySelector('.nav-link');
+          if (link && activeId === 'nav-epics') {
+            link.innerHTML += ' <span class="sr-only">(current)</span>';
+          }
+        }
+      }
+      
+      // Handle hash changes
+      window.addEventListener('hashchange', updateActiveNav);
+      window.addEventListener('load', updateActiveNav);
     });
   </script>
 
