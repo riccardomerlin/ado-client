@@ -1,10 +1,5 @@
 import fetch from 'node-fetch';
-import 'dotenv/config';
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const configPath = path.resolve('config.json');
-const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
+import config from '../config.js';
 
 const { orgUrl, projectName, apiVersion, releaseFieldName } = config;
 const pat = process.env.ADO_CLIENT_PAT;

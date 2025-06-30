@@ -1,12 +1,7 @@
 import fetch from 'node-fetch';
-import 'dotenv/config';
-import { promises as fs } from 'fs';
-import path from 'path';
+import config from '../config.js';
 
-const configPath = path.resolve('config.json');
-const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
-
-const { orgUrl, projectName, release, apiVersion } = config;
+const { orgUrl, projectName, defaultRelease, apiVersion } = config;
 const pat = process.env.ADO_CLIENT_PAT;
 
 export default async function createPBI(title, description, assignedTo, acceptanceCriteria, parentId, areaPath, iterationPath) {

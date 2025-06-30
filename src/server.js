@@ -6,10 +6,7 @@ import getTemplates from './apis/getTemplates.js';
 import getEpicsByRelease from './apis/getEpicsByRelease.js';
 import getEpicProgressByRelease from './apis/getEpicProgressByRelease.js';
 import { getChildrenWithBottomUpProgress, getChildrenWithBottomUpProgressUsingStrategy } from './utils/hierarchyProgressCalculator.js';
-import { promises as fs } from 'fs';
-
-const configPath = path.resolve('config.json');
-const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
+import config from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

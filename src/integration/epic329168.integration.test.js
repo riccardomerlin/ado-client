@@ -16,11 +16,8 @@ describe('Epic 329168 Integration Tests', () => {
 
   before(async () => {
     // Create a test server instance
-    app = Fastify({ logger: false });
-
-    // Load config
-    const configPath = path.resolve('config.json');
-    const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
+    app = Fastify({ logger: false });    // Load config
+    const config = (await import('../config.js')).default;
 
     // Register routes (same as main server)
     app.register(import('@fastify/static'), {
