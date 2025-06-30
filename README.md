@@ -20,29 +20,83 @@ with the following permissions:
 - Code `Read`
 - Project & Teams `Read`
 
-Create a `.env` file in the root folder of the project with the PAT just
-generated:
+Create a `.env` file in the root folder of the project with your configuration:
 
-```text
-ADO_CLIENT_PAT=<your_PAT>
-```
+```bash
+# Azure DevOps Configuration
+ORG_URL=https://dev.azure.com/your-organization
+PROJECT_NAME=your-project-name
+TEAM_ID=your-team-id-guid
+API_VERSION=7.1
+PORT=7010
+DEFAULT_RELEASE=25R3
+DEFAULT_AREA_PATH=your-project\\your-area-path
+RELEASE_FIELD_NAME=Your.Custom.Release.Field
+DEFAULT_RELATIONSHIP_STRATEGY=hierarchy-with-related
 
-Open up `./config.json` and fill out all the fields (you can copy from `config.example.json`):
-
-```json
-{
-    "orgUrl": "https://dev.azure.com/your-organization",
-    "projectName": "your-project-name",
-    "teamId": "your-team-id-guid",
-    "apiVersion": "7.1",
-    "port": 7010
-}
+# Azure DevOps Personal Access Token
+ADO_CLIENT_PAT=your_personal_access_token_here
 ```
 
 Go to `https://<your_organization_ado_url>/<Your_ADO_Project_Name>/_settings/work-team?type=Task&_a=templates` and add your `Task Templates`.
 
+## Local Development
+
 Run `npm start` and navigate to [http://localhost:7010](http://localhost:7010)
 to open up the web page to add predefined tasks to a PBI.
+
+## Deploy to AWS App Runner
+
+This application is optimized for deployment on AWS App Runner, which provides:
+- **Pay-per-use pricing** - Only pay when your app is processing requests
+- **Automatic scaling** - Scales from 0 to handle traffic spikes
+- **Zero infrastructure management** - Fully managed service
+- **Minimal resources** - Starts with 0.25 vCPU, 0.5 GB RAM
+
+### Option 1: GitHub Source Deployment (Recommended)
+
+This is the simplest approach - App Runner builds and deploys directly from your GitHub repository.
+
+```bash
+# Deploy from GitHub repository
+.\deploy-apprunner.ps1 -GitHubRepo "https://github.com/yourusername/ado-client"
+
+# Setup environment variables
+npm run setup:apprunner
+```
+
+### Option 2: Container Deployment
+
+If you prefer container deployment:
+
+```bash
+# Setup IAM roles (one-time)
+.\deploy-apprunner.ps1 -Setup
+
+# Deploy using ECR container
+.\deploy-apprunner.ps1 -UseECR
+```
+
+### Environment Variables for App Runner
+
+Set these environment variables in your App Runner service:
+
+- `ORG_URL` - Your Azure DevOps organization URL
+- `PROJECT_NAME` - Your ADO project name  
+- `TEAM_ID` - Your team GUID
+- `API_VERSION` - ADO API version (usually 7.1)
+- `DEFAULT_RELEASE` - Default release name
+- `DEFAULT_AREA_PATH` - Default area path
+- `RELEASE_FIELD_NAME` - Custom release field name
+- `DEFAULT_RELATIONSHIP_STRATEGY` - Relationship strategy
+- `ADO_CLIENT_PAT` - Your Personal Access Token (**Keep this secret!**)
+
+### App Runner Benefits
+
+- **Cost-effective**: No charges when idle, minimal cost when running
+- **Simple**: No Docker knowledge needed for GitHub deployment
+- **Automatic**: Auto-deploys when you push to your main branch
+- **Scalable**: Handles traffic spikes automatically
 
 CLI
 ---

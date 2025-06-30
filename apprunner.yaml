@@ -1,0 +1,35 @@
+version: 1.0
+runtime: nodejs18
+build:
+  commands:
+    build:
+      - echo "Installing dependencies..."
+      - npm ci --production
+run:
+  runtime-version: 18
+  command: npm start
+  network:
+    port: 7010
+    env: PORT
+  env:
+    - name: NODE_ENV
+      value: production
+    # Azure DevOps Configuration - uncomment and set your values:
+    # - name: ORG_URL
+    #   value: "https://dev.azure.com/your-organization"
+    # - name: PROJECT_NAME
+    #   value: "your-project-name"
+    # - name: TEAM_ID
+    #   value: "your-team-id-guid"
+    # - name: API_VERSION
+    #   value: "7.1"
+    # - name: DEFAULT_RELEASE
+    #   value: "25R3"
+    # - name: DEFAULT_AREA_PATH
+    #   value: "your-project\\your-area-path"
+    # - name: RELEASE_FIELD_NAME
+    #   value: "Your.Custom.Release.Field"
+    # - name: DEFAULT_RELATIONSHIP_STRATEGY
+    #   value: "hierarchy-with-related"
+    # - name: ADO_CLIENT_PAT
+    #   value: "your-personal-access-token"
