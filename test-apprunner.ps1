@@ -97,7 +97,7 @@ $serviceConfig = @{
                 Value = "main"
             }
             CodeConfiguration = @{
-                ConfigurationSource = "CONFIGURATION_FILE"
+                ConfigurationSource = "REPOSITORY"
             }
         }
         AutoDeploymentsEnabled = $true
