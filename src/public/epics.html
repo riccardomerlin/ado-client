@@ -108,8 +108,7 @@
     .release-badge.no-release {
       background-color: #6c757d; /* Gray for no release */
       font-style: italic;
-    }
-    .related-badge {
+    }    .related-badge {
       display: inline-block;
       padding: 2px 6px;
       border-radius: 8px;
@@ -121,6 +120,23 @@
       margin-left: 8px;
       min-width: 50px;
       text-align: center;
+    }
+    
+    /* Progress bar color mappings */
+    .bg-success {
+      background-color: #28a745 !important;
+    }
+    .bg-warning {
+      background-color: #ffc107 !important;
+    }
+    .bg-danger {
+      background-color: #dc3545 !important;
+    }
+    
+    /* Ensure progress text is visible on colored backgrounds */
+    .progress-bar {
+      color: #fff !important;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -185,9 +201,7 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <div id="alertContainer"></div>
+    </div>    <div id="alertContainer"></div>
     <div id="loadingContainer" class="text-center" style="display: none;">
       <div class="spinner-border" role="status">
         <span class="sr-only">Loading...</span>
@@ -195,12 +209,78 @@
       <p class="mt-2">Loading epics...</p>
     </div>
     
-    <div id="epicsContainer"></div>
+    <!-- Overall Release Progress Section -->
+    <div id="releaseProgressContainer" style="display: none;" class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="fas fa-chart-line mr-2"></i>
+          Release Progress Overview
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="font-weight-bold">Overall Release Progress</span>
+              <span id="releaseProgressText" class="font-weight-bold">Calculating...</span>
+            </div>
+            <div class="progress" style="height: 25px;">
+              <div id="releaseProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                   role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <span id="releaseProgressPercent">0%</span>
+              </div>
+            </div>
+            <small class="text-muted mt-1 d-block">
+              <span id="releaseProgressDetails">Loading epic data...</span>
+            </small>
+          </div>
+          <div class="col-md-4 text-center">
+            <div class="d-flex justify-content-around">
+              <div class="text-center">
+                <div class="h4 mb-0 text-primary" id="totalEpicsCount">-</div>
+                <small class="text-muted">Total Epics</small>
+              </div>
+              <div class="text-center">
+                <div class="h4 mb-0 text-success" id="completedEpicsCount">-</div>
+                <small class="text-muted">Completed</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Epic Details Section -->
+    <div id="epicDetailsContainer" style="display: none;" class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <button class="btn btn-link p-0 text-decoration-none" type="button" data-toggle="collapse" 
+                  data-target="#epicsContainer" aria-expanded="false" aria-controls="epicsContainer">
+            <i class="fas fa-chevron-right mr-2" id="epicDetailsToggleIcon"></i>
+            Epic Details
+          </button>
+          <small class="text-muted ml-2">Click to expand/collapse detailed epic hierarchy</small>
+        </h5>
+      </div>
+      <div class="collapse" id="epicsContainer">
+        <div class="card-body" id="epicsContainerBody">
+        </div>
+      </div>
+    </div>
   </div>  <script>
     let currentRelease = '';
     let currentAreaPath = '';
     let config = null;
-    let defaultRelationshipStrategy = 'hierarchy-with-related';    // Load configuration on page load
+    let defaultRelationshipStrategy = 'hierarchy-with-related';
+    
+    // Release progress tracking
+    let releaseProgressTracker = {
+      totalEpics: 0,
+      completedCalculations: 0,
+      totalProgress: 0,
+      completedEpics: 0,
+      isCalculating: false
+    };// Load configuration on page load
     async function loadConfig() {
       try {
         const response = await fetch('/api/config');
@@ -304,9 +384,7 @@
       return `<span class="badge badge-secondary progress-badge" title="Calculating progress...">
         <i class="fas fa-spinner fa-spin"></i>
       </span>`;
-    }
-
-    function updateWorkItemProgress(workItemId, progress, hasChildren) {
+    }    function updateWorkItemProgress(workItemId, progress, hasChildren) {
       const workItemDiv = document.querySelector(`[data-id="${workItemId}"]`);
       if (workItemDiv) {
         const progressBadge = workItemDiv.querySelector('.progress-badge');
@@ -323,6 +401,75 @@
             expandIcon.textContent = '•';
           }
         }
+      }
+      
+      // Update release progress if this is a top-level epic
+      updateReleaseProgress(workItemId, progress);
+    }
+
+    function initializeReleaseProgress(totalEpics) {
+      releaseProgressTracker = {
+        totalEpics: totalEpics,
+        completedCalculations: 0,
+        totalProgress: 0,
+        completedEpics: 0,
+        isCalculating: true
+      };
+      
+      document.getElementById('releaseProgressContainer').style.display = 'block';
+      document.getElementById('epicDetailsContainer').style.display = 'block';
+      document.getElementById('totalEpicsCount').textContent = totalEpics;
+      document.getElementById('completedEpicsCount').textContent = '0';
+      document.getElementById('releaseProgressText').textContent = 'Calculating...';
+      document.getElementById('releaseProgressDetails').textContent = `Calculating progress for ${totalEpics} epics...`;
+      
+      // Start with animated progress bar
+      const progressBar = document.getElementById('releaseProgressBar');
+      progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+      progressBar.style.width = '0%';
+      progressBar.setAttribute('aria-valuenow', '0');
+      document.getElementById('releaseProgressPercent').textContent = '0%';
+    }
+
+    function updateReleaseProgress(epicId, epicProgress) {
+      if (!releaseProgressTracker.isCalculating) return;
+      
+      releaseProgressTracker.completedCalculations++;
+      releaseProgressTracker.totalProgress += epicProgress;
+      
+      if (epicProgress === 100) {
+        releaseProgressTracker.completedEpics++;
+      }
+      
+      const overallProgress = Math.round(releaseProgressTracker.totalProgress / releaseProgressTracker.completedCalculations);
+      const calculationProgress = (releaseProgressTracker.completedCalculations / releaseProgressTracker.totalEpics) * 100;
+      
+      // Update progress bar
+      const progressBar = document.getElementById('releaseProgressBar');
+      progressBar.style.width = `${overallProgress}%`;
+      progressBar.setAttribute('aria-valuenow', overallProgress);
+      document.getElementById('releaseProgressPercent').textContent = `${overallProgress}%`;
+      
+      // Update progress text and details
+      document.getElementById('releaseProgressText').textContent = `${overallProgress}%`;
+      document.getElementById('completedEpicsCount').textContent = releaseProgressTracker.completedEpics;
+      
+      const remainingCalculations = releaseProgressTracker.totalEpics - releaseProgressTracker.completedCalculations;
+      if (remainingCalculations > 0) {
+        document.getElementById('releaseProgressDetails').textContent = 
+          `${releaseProgressTracker.completedCalculations} of ${releaseProgressTracker.totalEpics} epics calculated (${remainingCalculations} remaining)`;
+      } else {
+        document.getElementById('releaseProgressDetails').textContent = 
+          `All ${releaseProgressTracker.totalEpics} epics calculated`;
+        
+        // Remove animation when complete
+        progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+          // Update progress bar color based on completion
+        const bgClass = overallProgress === 100 ? 'bg-success' : 
+                       overallProgress >= 50 ? 'bg-warning' : 'bg-danger';
+        progressBar.className = `progress-bar ${bgClass}`;
+        
+        releaseProgressTracker.isCalculating = false;
       }
     }
 
@@ -479,12 +626,14 @@
       if (!areaPath) {
         showAlert('Please enter an area path', 'warning');
         return;
-      }
-
-      currentRelease = release;
+      }      currentRelease = release;
       currentAreaPath = areaPath;
       showLoading(true);
-      document.getElementById('epicsContainer').innerHTML = '';
+      document.getElementById('epicsContainerBody').innerHTML = '';
+      
+      // Hide progress containers
+      document.getElementById('releaseProgressContainer').style.display = 'none';
+      document.getElementById('epicDetailsContainer').style.display = 'none';
       
       try {
         const response = await fetch(`/api/epics?release=${encodeURIComponent(release)}&areaPath=${encodeURIComponent(areaPath)}`);
@@ -492,16 +641,15 @@
           throw new Error('Failed to load epics');
         }
 
-        const epics = await response.json();
-
-        if (epics.length === 0) {
+        const epics = await response.json();        if (epics.length === 0) {
           showLoading(false);
-          document.getElementById('epicsContainer').innerHTML = 
+          document.getElementById('epicsContainerBody').innerHTML = 
             '<div class="alert alert-info">No epics found for the specified release and area path.</div>';
           return;
-        }
-
-        const container = document.getElementById('epicsContainer');
+        }const container = document.getElementById('epicsContainerBody');
+        
+        // Initialize release progress tracking
+        initializeReleaseProgress(epics.length);
         
         // Load epics immediately without progress calculations
         showLoading(false);
@@ -547,11 +695,19 @@
         loadEpics();
       }
     });
-    
-    // Auto-focus on release input and load config
+      // Auto-focus on release input and load config
     document.addEventListener('DOMContentLoaded', async () => {
       await loadConfig();
       document.getElementById('releaseInput').focus();
+      
+      // Add event listener for epic details collapse/expand
+      $('#epicsContainer').on('show.bs.collapse', function () {
+        document.getElementById('epicDetailsToggleIcon').className = 'fas fa-chevron-down mr-2';
+      });
+      
+      $('#epicsContainer').on('hide.bs.collapse', function () {
+        document.getElementById('epicDetailsToggleIcon').className = 'fas fa-chevron-right mr-2';
+      });
     });
   </script>
 
