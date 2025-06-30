@@ -3,7 +3,8 @@
   "projectName": "your-project-name",
   "teamId": "your-team-id-guid",
   "apiVersion": "7.1",
-  "port": 7010,  "defaultRelease": "your-default-release",
+  "port": 7010, 
+  "defaultRelease": "your-default-release",
   "defaultAreaPath": "your-project\\your-area-path",
   "releaseFieldName": "Your.Custom.Release.Field",
   "defaultRelationshipStrategy": "hierarchy-with-related"
