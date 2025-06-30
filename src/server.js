@@ -153,9 +153,9 @@ fastify.get('/api/workitems/:id/children', async (request, reply) => {
 
 const start = async () => {
   try {
-    const port = config.port || 7010;
-    await fastify.listen({ port: port });
-    fastify.log.info(`Server listening on http://localhost:${port}`);
+    const port = process.env.PORT || config.port || 7010;
+    await fastify.listen({ port: port, host: '0.0.0.0' });
+    fastify.log.info(`Server listening on port ${port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
