@@ -22,6 +22,11 @@ fastify.get('/', async (_, reply) => {
   return reply.sendFile('index.html');
 });
 
+// Health check endpoint for App Runner
+fastify.get('/health', async (_, reply) => {
+  return { status: 'healthy', timestamp: new Date().toISOString() };
+});
+
 fastify.get('/tasks', async (_, reply) => {
   return reply.sendFile('tasks.html');
 });

@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.env
+.nyc_output
+coverage
+.DS_Store
+.vscode
+docs
+test
+*.test.js
+deploy-*.ps1
+setup-*.ps1
+test-*.ps1
+DEPLOYMENT.md

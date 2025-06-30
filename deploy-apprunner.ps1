@@ -1,11 +1,9 @@
-# Deploy to AWS App Runner
-# This script creates an App Runner service with minimal configuration
+# Deploy to AWS App Runner using ECR
+# This script creates an App Runner service with ECR container deployment
 
 param(
     [string]$ServiceName = "ado-client",
     [string]$Region = "eu-west-1",
-    [string]$GitHubRepo = "",
-    [switch]$UseECR,
     [switch]$Setup
 )
 
@@ -30,8 +28,7 @@ Write-Host "✅ AWS credentials configured" -ForegroundColor Green
 # Setup IAM roles if requested
 if ($Setup) {
     Write-Host "⚙️  Setting up IAM roles for App Runner..." -ForegroundColor Yellow
-    
-    # Create App Runner service role
+      # Create App Runner access role for ECR
     $trustPolicy = @"
 {
     "Version": "2012-10-17",
@@ -39,7 +36,7 @@ if ($Setup) {
         {
             "Effect": "Allow",
             "Principal": {
-                "Service": "apprunner.amazonaws.com"
+                "Service": "build.apprunner.amazonaws.com"
             },
             "Action": "sts:AssumeRole"
         }
@@ -48,8 +45,7 @@ if ($Setup) {
 "@
     
     $trustPolicy | Out-File -FilePath "trust-policy.json" -Encoding UTF8
-    
-    Write-Host "Creating App Runner service role..." -ForegroundColor Cyan
+      Write-Host "Creating App Runner service role..." -ForegroundColor Cyan
     aws iam create-role --role-name AppRunnerECRAccessRole --assume-role-policy-document file://trust-policy.json 2>$null
     aws iam attach-role-policy --role-name AppRunnerECRAccessRole --policy-arn arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
     
@@ -57,51 +53,46 @@ if ($Setup) {
     Write-Host "✅ IAM roles configured" -ForegroundColor Green
 }
 
-if ($UseECR) {
-    # ECR deployment path
-    Write-Host "📦 Setting up ECR deployment..." -ForegroundColor Yellow
-    
-    $accountId = aws sts get-caller-identity --query Account --output text
-    $ecrRepo = "$accountId.dkr.ecr.$Region.amazonaws.com/$ServiceName"
-    
-    Write-Host "Creating ECR repository..." -ForegroundColor Cyan
-    aws ecr create-repository --repository-name $ServiceName --region $Region 2>$null
-    
-    Write-Host "Building and pushing Docker image..." -ForegroundColor Cyan
-    
-    # Create optimized Dockerfile
-    $dockerfileContent = @"
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-COPY . .
-EXPOSE 7010
-CMD ["npm", "start"]
-"@
-    $dockerfileContent | Out-File -FilePath "Dockerfile" -Encoding UTF8
-    
-    # Build and push
-    aws ecr get-login-password --region $Region | docker login --username AWS --password-stdin $ecrRepo
-    docker build -t $ServiceName .
-    docker tag $ServiceName`:latest $ecrRepo`:latest
-    docker push $ecrRepo`:latest
-    
-    $imageUri = "$ecrRepo`:latest"
-    Write-Host "✅ Image pushed to: $imageUri" -ForegroundColor Green
-    
-} else {
-    # GitHub source deployment (simpler)
-    if (-not $GitHubRepo) {
-        Write-Host "❌ GitHub repository URL required for source deployment" -ForegroundColor Red
-        Write-Host "💡 Example: https://github.com/username/ado-client" -ForegroundColor Yellow
-        Write-Host "💡 Or use -UseECR for container deployment" -ForegroundColor Yellow
+# ECR deployment
+Write-Host "📦 Setting up ECR deployment..." -ForegroundColor Yellow
+
+$accountId = aws sts get-caller-identity --query Account --output text
+$ecrRepo = "$accountId.dkr.ecr.$Region.amazonaws.com/$ServiceName"
+
+Write-Host "Creating ECR repository..." -ForegroundColor Cyan
+aws ecr create-repository --repository-name $ServiceName --region $Region 2>$null
+Write-Host "Building and pushing Docker image..." -ForegroundColor Cyan
+      # Check if Dockerfile exists
+    if (!(Test-Path "Dockerfile")) {
+        Write-Host "❌ Dockerfile not found. Please ensure Dockerfile exists in the current directory." -ForegroundColor Red
         exit 1
     }
+    Write-Host "✅ Dockerfile found" -ForegroundColor Green
+      # Check if WSL is available and Docker is running there
+    Write-Host "Checking Docker availability..." -ForegroundColor Cyan
+    wsl docker --version 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Docker not available in WSL. Please ensure Docker is running in WSL." -ForegroundColor Red
+        Write-Host "💡 Try: wsl docker --version" -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "✅ Docker available in WSL" -ForegroundColor Green
     
-    Write-Host "📂 Setting up GitHub source deployment..." -ForegroundColor Yellow
-    Write-Host "Repository: $GitHubRepo" -ForegroundColor Cyan
-}
+    # Build and push using WSL
+    Write-Host "Logging into ECR..." -ForegroundColor Cyan
+    aws ecr get-login-password --region $Region | wsl docker login --username AWS --password-stdin $ecrRepo
+    
+    Write-Host "Building Docker image..." -ForegroundColor Cyan
+    wsl docker build -t $ServiceName .
+    
+    Write-Host "Tagging image..." -ForegroundColor Cyan
+    wsl docker tag $ServiceName`:latest $ecrRepo`:latest
+    
+    Write-Host "Pushing to ECR..." -ForegroundColor Cyan
+    wsl docker push $ecrRepo`:latest
+    
+    $imageUri = "$ecrRepo`:latest"
+Write-Host "✅ Image pushed to: $imageUri" -ForegroundColor Green
 
 # Create App Runner service configuration
 $serviceConfig = @"
@@ -110,37 +101,25 @@ $serviceConfig = @"
     "SourceConfiguration": {
 "@
 
-if ($UseECR) {
-    $serviceConfig += @"
+# Get the IAM role ARN for ECR access
+$accountId = aws sts get-caller-identity --query Account --output text
+$roleArn = "arn:aws:iam::${accountId}:role/AppRunnerECRAccessRole"
+
+$serviceConfig += @"
         "ImageRepository": {
             "ImageIdentifier": "$imageUri",
             "ImageConfiguration": {
-                "Port": "7010",
+                "Port": "3000",
                 "RuntimeEnvironmentVariables": {
                     "NODE_ENV": "production"
                 }
             },
             "ImageRepositoryType": "ECR"
         },
-        "AutoDeploymentsEnabled": false
-"@
-} else {
-    $serviceConfig += @"
-     "CodeRepository": {
-            "RepositoryUrl": "$GitHubRepo",
-            "SourceCodeVersion": {
-                "Type": "BRANCH",
-                "Value": "main"
-            },
-            "CodeConfiguration": {
-                "ConfigurationSource": "REPOSITORY"
-            }
-        },
-        "AutoDeploymentsEnabled": true
-"@
-}
-
-$serviceConfig += @"
+        "AutoDeploymentsEnabled": false,
+        "AuthenticationConfiguration": {
+            "AccessRoleArn": "$roleArn"
+        }
     },
     "InstanceConfiguration": {
         "Cpu": "0.25 vCPU",
@@ -177,9 +156,6 @@ if ($LASTEXITCODE -eq 0) {
 
 # Cleanup temp files
 Remove-Item "apprunner-config.json" -Force -ErrorAction SilentlyContinue
-if ($UseECR) {
-    Remove-Item "Dockerfile" -Force -ErrorAction SilentlyContinue
-}
 
 Write-Host ""
 Write-Host "🎯 Next Steps:" -ForegroundColor Yellow
@@ -188,6 +164,8 @@ Write-Host "2. Monitor deployment progress in AWS Console" -ForegroundColor Whit
 Write-Host "3. Once running, you'll get a public URL" -ForegroundColor White
 Write-Host ""
 Write-Host "💡 Useful commands:" -ForegroundColor Cyan
+Write-Host "   .\deploy-apprunner.ps1                    # Deploy using ECR" -ForegroundColor White
+Write-Host "   .\deploy-apprunner.ps1 -Setup             # Setup IAM roles first" -ForegroundColor White
 Write-Host "   aws apprunner list-services --region $Region" -ForegroundColor White
 Write-Host "   aws apprunner describe-service --service-arn <arn> --region $Region" -ForegroundColor White
 Write-Host "   aws apprunner delete-service --service-arn <arn> --region $Region" -ForegroundColor White
