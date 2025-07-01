@@ -9,27 +9,23 @@ run:
   runtime-version: 18
   command: npm start
   network:
-    port: 7010
+    port: 3000
     env: PORT
   env:
     - name: NODE_ENV
       value: production
-    # Azure DevOps Configuration - uncomment and set your values:
-    # - name: ORG_URL
-    #   value: "https://dev.azure.com/your-organization"
-    # - name: PROJECT_NAME
-    #   value: "your-project-name"
-    # - name: TEAM_ID
-    #   value: "your-team-id-guid"
-    # - name: API_VERSION
-    #   value: "7.1"
-    # - name: DEFAULT_RELEASE
-    #   value: "25R3"
-    # - name: DEFAULT_AREA_PATH
-    #   value: "your-project\\your-area-path"
-    # - name: RELEASE_FIELD_NAME
-    #   value: "Your.Custom.Release.Field"
-    # - name: DEFAULT_RELATIONSHIP_STRATEGY
-    #   value: "hierarchy-with-related"
-    # - name: ADO_CLIENT_PAT
-    #   value: "your-personal-access-token"
+    # Environment variables are configured securely via:
+    # 1. AWS App Runner Console (Configuration → Environment variables)
+    # 2. AWS SSM Parameter Store (use setup-secure-env.ps1)
+    # 3. Runtime configuration (use update-apprunner-env.ps1)
+    # 
+    # Required variables:
+    # - ORG_URL: Azure DevOps organization URL
+    # - PROJECT_NAME: Azure DevOps project name  
+    # - TEAM_ID: Azure DevOps team ID (GUID)
+    # - API_VERSION: Azure DevOps API version (e.g., "7.1")
+    # - DEFAULT_RELEASE: Default release version (e.g., "25R3")
+    # - DEFAULT_AREA_PATH: Default area path
+    # - RELEASE_FIELD_NAME: Custom release field name
+    # - DEFAULT_RELATIONSHIP_STRATEGY: Strategy (e.g., "hierarchy-with-related")
+    # - ADO_CLIENT_PAT: Personal Access Token (SECURE - use SSM Parameter Store)

@@ -47,56 +47,50 @@ to open up the web page to add predefined tasks to a PBI.
 
 ## Deploy to AWS App Runner
 
-This application is optimized for deployment on AWS App Runner, which provides:
-- **Pay-per-use pricing** - Only pay when your app is processing requests
-- **Automatic scaling** - Scales from 0 to handle traffic spikes
-- **Zero infrastructure management** - Fully managed service
-- **Minimal resources** - Starts with 0.25 vCPU, 0.5 GB RAM
+This application is optimized for deployment on AWS App Runner using secure environment variables from AWS SSM Parameter Store and container images from ECR.
 
-### Option 1: GitHub Source Deployment (Recommended)
+### Secure Deployment Workflow (2025+)
 
-This is the simplest approach - App Runner builds and deploys directly from your GitHub repository.
+1. **Set up environment variables in SSM Parameter Store:**
+   ```powershell
+   .\setup-secure-env-simple.ps1
+   ```
+   This script is copy-paste friendly and loads defaults from your `.env` file if present. It will prompt you for all required variables, including secrets.
 
-```bash
-# Deploy from GitHub repository
-.\deploy-apprunner.ps1 -GitHubRepo "https://github.com/yourusername/ado-client"
+2. **Deploy to App Runner using ECR container:**
+   ```powershell
+   .\deploy-apprunner-with-env.ps1
+   ```
+   This builds, pushes, and deploys your container, injecting all environment variables from SSM at creation.
 
-# Setup environment variables
-npm run setup:apprunner
-```
+3. **Update environment variables on a running service:**
+   ```powershell
+   .\update-apprunner-env.ps1
+   ```
+   Use this if you need to update environment variables after the service is running.
 
-### Option 2: Container Deployment
+4. **Monitor deployment:**
+   ```powershell
+   aws apprunner describe-service --service-arn <arn> --region <region>
+   aws apprunner list-services --region <region>
+   ```
 
-If you prefer container deployment:
+5. **Access your app:**
+   Visit the App Runner public URL shown in the deployment output.
 
-```bash
-# Setup IAM roles (one-time)
-.\deploy-apprunner.ps1 -Setup
-
-# Deploy using ECR container
-.\deploy-apprunner.ps1 -UseECR
-```
-
-### Environment Variables for App Runner
-
-Set these environment variables in your App Runner service:
-
+#### Required Environment Variables (managed in SSM)
 - `ORG_URL` - Your Azure DevOps organization URL
-- `PROJECT_NAME` - Your ADO project name  
+- `PROJECT_NAME` - Your ADO project name
 - `TEAM_ID` - Your team GUID
 - `API_VERSION` - ADO API version (usually 7.1)
+- `PORT` - Server port (default: 3000)
 - `DEFAULT_RELEASE` - Default release name
 - `DEFAULT_AREA_PATH` - Default area path
 - `RELEASE_FIELD_NAME` - Custom release field name
 - `DEFAULT_RELATIONSHIP_STRATEGY` - Relationship strategy
 - `ADO_CLIENT_PAT` - Your Personal Access Token (**Keep this secret!**)
 
-### App Runner Benefits
-
-- **Cost-effective**: No charges when idle, minimal cost when running
-- **Simple**: No Docker knowledge needed for GitHub deployment
-- **Automatic**: Auto-deploys when you push to your main branch
-- **Scalable**: Handles traffic spikes automatically
+> **Note:** All secrets are stored securely in SSM Parameter Store. No secrets are present in code, YAML, or Dockerfiles.
 
 CLI
 ---

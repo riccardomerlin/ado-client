@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import createTasksFromTemplates from './apis/createTasksFromTemplates.js';
 import getTemplates from './apis/getTemplates.js';
@@ -13,8 +14,19 @@ const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({ logger: true });
 
+// Debug: Log the paths being used
+const publicPath = path.join(__dirname, 'public');
+console.log('__dirname:', __dirname);
+console.log('publicPath:', publicPath);
+try {
+  const files = fs.readdirSync(publicPath);
+  console.log('Files in publicPath:', files);
+} catch (e) {
+  console.log('Directory not found:', e.message);
+}
+
 fastify.register(import('@fastify/static'), {
-  root: path.join(__dirname, 'public'),
+  root: publicPath,
   prefix: '/public/',
 });
 

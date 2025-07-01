@@ -15,6 +15,9 @@ RUN npm install --production
 COPY src/ ./src/
 COPY apprunner.yaml ./
 
+# Set the PORT environment variable for the container
+ENV PORT=3000
+
 # Create a non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001 && \

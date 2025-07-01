@@ -5,14 +5,13 @@
   "type": "module",
   "bin": {
     "adoCli": "./src/cli.js"
-  },  "scripts": {
+  },
+  "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "build": "echo 'No build step required for Node.js'",
-    "test": "node --test test/*.test.js",
-    "deploy:apprunner": "powershell -ExecutionPolicy Bypass -File deploy-apprunner.ps1",
-    "setup:apprunner": "powershell -ExecutionPolicy Bypass -File setup-apprunner-env.ps1"
-  },"keywords": ["azure-devops", "ado", "work-items", "fastify", "node"],
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": ["azure-devops", "ado", "work-items", "fastify", "node"],
   "author": "",
   "license": "ISC",
   "description": "Azure DevOps client for bulk work item creation and management",
