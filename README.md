@@ -69,13 +69,19 @@ This application is optimized for deployment on AWS App Runner using secure envi
    ```
    Use this if you need to update environment variables after the service is running.
 
-4. **Monitor deployment:**
+4. **Restart a paused service:**
+   ```powershell
+   .\restart-apprunner.ps1
+   ```
+   Use this to resume a paused App Runner service. The script will find your service, resume it, and wait for it to be fully running.
+
+5. **Monitor deployment:**
    ```powershell
    aws apprunner describe-service --service-arn <arn> --region <region>
    aws apprunner list-services --region <region>
    ```
 
-5. **Access your app:**
+6. **Access your app:**
    Visit the App Runner public URL shown in the deployment output.
 
 #### Required Environment Variables (managed in SSM)
